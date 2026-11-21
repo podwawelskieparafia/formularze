@@ -55,6 +55,9 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+/* Tło strony białe jak na podwawelskie.pl; szare jest tylko pole formularza (body).
+   Dzięki temu przy stałej wysokości iframe puste miejsce pod formularzem jest białe. */
+html { background: var(--bg); }
 body {
   background: var(--panel);
   color: var(--text);
