@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Szukam pomocy</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<form class="card" data-form="szukam" novalidate>
+  <div class="hp" aria-hidden="true">
+    <label>Nie wypełniaj tego pola <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  </div>
+
+  <fieldset class="field" data-req="radio">
+    <legend>Kogo dotyczy zgłoszenie? <span class="req">*</span></legend>
+    <div class="choices">
+      <label class="choice">
+        <input type="radio" name="typ" value="Dla siebie" data-key="siebie">
+        <span><strong>Potrzebuję pomocy</strong><small>Zgłaszam potrzebę dla siebie</small></span>
+      </label>
+      <label class="choice">
+        <input type="radio" name="typ" value="Zgłaszam kogoś" data-key="kogos">
+        <span><strong>Zgłaszam kogoś</strong><small>Znam osobę, która potrzebuje pomocy</small></span>
+      </label>
+    </div>
+    <div class="err"></div>
+  </fieldset>
+
+  <!-- Dla siebie -->
+  <div class="section" data-only="siebie" hidden>
+    <p class="section-title">Twoje dane</p>
+    <p class="section-note">Możesz pozostać anonimowy. Potrzebujemy tylko sposobu, żeby się z Tobą skontaktować.</p>
+    <div class="field">
+      <label for="s-imie">Imię lub pseudonim <span class="opt">(opcjonalnie)</span></label>
+      <input id="s-imie" type="text" name="imie" maxlength="80" autocomplete="given-name">
+    </div>
+    <div class="field" data-req="contact">
+      <div class="row2">
+        <div>
+          <label for="s-tel">Telefon</label>
+          <input id="s-tel" type="tel" name="telefon" maxlength="30" autocomplete="tel" inputmode="tel">
+        </div>
+        <div>
+          <label for="s-mail">E-mail</label>
+          <input id="s-mail" type="email" name="email" maxlength="120" autocomplete="email">
+        </div>
+      </div>
+      <div class="hint">Wystarczy jeden sposób kontaktu. <span class="req">*</span></div>
+      <div class="err"></div>
+    </div>
+  </div>
+
+  <!-- Zgłaszam kogoś -->
+  <div class="section" data-only="kogos" hidden>
+    <p class="section-title">Twoje dane (osoby zgłaszającej)</p>
+    <p class="section-note">Potrzebujemy ich, aby w razie pytań skontaktować się z Tobą.</p>
+    <div class="field">
+      <label for="k-imie">Twoje imię <span class="opt">(opcjonalnie)</span></label>
+      <input id="k-imie" type="text" name="imie" maxlength="80" autocomplete="given-name">
+    </div>
+    <div class="field" data-req="contact">
+      <div class="row2">
+        <div>
+          <label for="k-tel">Telefon</label>
+          <input id="k-tel" type="tel" name="telefon" maxlength="30" autocomplete="tel" inputmode="tel">
+        </div>
+        <div>
+          <label for="k-mail">E-mail</label>
+          <input id="k-mail" type="email" name="email" maxlength="120" autocomplete="email">
+        </div>
+      </div>
+      <div class="hint">Wystarczy jeden sposób kontaktu. <span class="req">*</span></div>
+      <div class="err"></div>
+    </div>
+  </div>
+
+  <div class="section" data-only="kogos" hidden>
+    <p class="section-title">Osoba, która potrzebuje pomocy</p>
+    <div class="field">
+      <label for="k-osoba">Kto to jest? <span class="opt">(opcjonalnie)</span></label>
+      <input id="k-osoba" type="text" name="osoba" maxlength="200" placeholder="np. pani Anna, starsza sąsiadka">
+    </div>
+    <div class="field">
+      <label for="k-relacja">Kim jest dla Ciebie? <span class="opt">(opcjonalnie)</span></label>
+      <input id="k-relacja" type="text" name="relacja" maxlength="100" placeholder="np. sąsiad, członek rodziny, znajomy">
+    </div>
+    <div class="field">
+      <label for="k-kontakt">Kontakt do tej osoby <span class="opt">(opcjonalnie)</span></label>
+      <input id="k-kontakt" type="text" name="kontakt_osoby" maxlength="200" placeholder="telefon lub inny sposób kontaktu">
+    </div>
+    <fieldset class="field" data-req="radio">
+      <legend>Czy ta osoba wie o zgłoszeniu i zgadza się na nie? <span class="req">*</span></legend>
+      <div class="inline">
+        <label class="check"><input type="radio" name="osoba_wie" value="Tak"><span>Tak</span></label>
+        <label class="check"><input type="radio" name="osoba_wie" value="Nie"><span>Nie</span></label>
+        <label class="check"><input type="radio" name="osoba_wie" value="Nie wiem"><span>Nie wiem</span></label>
+      </div>
+      <div class="err"></div>
+    </fieldset>
+  </div>
+
+  <!-- Wspólne -->
+  <div class="section" data-after-typ hidden>
+    <p class="section-title">Potrzeba</p>
+    <fieldset class="field" data-req="any" data-msg="Wybierz co najmniej jeden rodzaj pomocy.">
+      <legend>Jakiej pomocy potrzeba? <span class="req">*</span></legend>
+      <div class="checks" data-categories="s"></div>
+      <div class="err"></div>
+    </fieldset>
+    <div class="field" data-req="text" data-msg="Opisz krótko, czego potrzeba.">
+      <label for="s-opis">Opisz, czego potrzeba <span class="req">*</span></label>
+      <textarea id="s-opis" name="opis" maxlength="3000" placeholder="np. potrzebna pomoc w zakupach raz w tygodniu, najlepiej w sobotę"></textarea>
+    </div>
+  </div>
+
+  <div class="section" data-after-typ hidden>
+    <p class="section-title">Zgody</p>
+    <div class="consents">
+      <label class="check">
+        <input type="checkbox" name="zgoda_kontakt">
+        <span>Zgadzam się, aby koordynator przekazał moje dane kontaktowe wolontariuszowi, który zaoferuje pomoc.</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" name="zgoda_publikacja">
+        <span>Zgadzam się na opublikowanie na stronie parafii krótkiego opisu potrzeby, bez imion, adresów i innych danych osobowych.</span>
+      </label>
+      <div class="field" data-req="consent">
+        <label class="check">
+          <input type="checkbox" name="zgoda_rodo">
+          <span>Wyrażam zgodę na przetwarzanie podanych danych przez Zespół Charytatywny parafii w celu zorganizowania pomocy. <span class="req">*</span></span>
+        </label>
+        <div class="err"></div>
+      </div>
+    </div>
+    <p class="privacy">Twoje dane zobaczy tylko koordynator Zespołu Charytatywnego. Bez Twojej zgody nie przekażemy ich nikomu.</p>
+  </div>
+
+  <div class="actions" data-after-typ hidden>
+    <button type="submit" class="primary">Wyślij zgłoszenie</button>
+    <span class="form-msg" role="alert"></span>
+  </div>
+</form>
+
+<div class="card done" tabindex="-1" hidden>
+  <div class="done-icon" aria-hidden="true">✓</div>
+  <h2>Dziękujemy! Zgłoszenie zostało wysłane.</h2>
+  <p>Koordynator Zespołu Charytatywnego skontaktuje się najszybciej, jak to możliwe.</p>
+  <button type="button" class="ghost" data-again>Wyślij kolejne zgłoszenie</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

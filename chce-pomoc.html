@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chcę pomóc</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<form class="card" data-form="chce" novalidate>
+  <div class="hp" aria-hidden="true">
+    <label>Nie wypełniaj tego pola <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Twoje dane</p>
+    <p class="section-note">Możesz pozostać anonimowy. Potrzebujemy tylko sposobu, żeby się z Tobą skontaktować.</p>
+    <div class="field">
+      <label for="c-imie">Imię lub pseudonim <span class="opt">(opcjonalnie)</span></label>
+      <input id="c-imie" type="text" name="imie" maxlength="80" autocomplete="given-name">
+    </div>
+    <div class="field" data-req="contact">
+      <div class="row2">
+        <div>
+          <label for="c-tel">Telefon</label>
+          <input id="c-tel" type="tel" name="telefon" maxlength="30" autocomplete="tel" inputmode="tel">
+        </div>
+        <div>
+          <label for="c-mail">E-mail</label>
+          <input id="c-mail" type="email" name="email" maxlength="120" autocomplete="email">
+        </div>
+      </div>
+      <div class="hint">Wystarczy jeden sposób kontaktu. <span class="req">*</span></div>
+      <div class="err"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Pomoc</p>
+    <fieldset class="field" data-req="any" data-msg="Wybierz co najmniej jeden rodzaj pomocy.">
+      <legend>W czym możesz pomóc? <span class="req">*</span></legend>
+      <div class="checks" data-categories="c"></div>
+      <div class="err"></div>
+    </fieldset>
+    <div class="field" data-req="text" data-msg="Opisz krótko, jak możesz pomóc.">
+      <label for="c-opis">Opisz, jak i kiedy możesz pomóc <span class="req">*</span></label>
+      <textarea id="c-opis" name="opis" maxlength="3000" placeholder="np. mam samochód i w soboty mogę podwieźć kogoś do lekarza"></textarea>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Zgody</p>
+    <div class="consents">
+      <label class="check">
+        <input type="checkbox" name="zgoda_kontakt">
+        <span>Zgadzam się, aby koordynator przekazał moje dane kontaktowe osobie, której pomoc będzie potrzebna.</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" name="zgoda_publikacja">
+        <span>Zgadzam się na opublikowanie na stronie parafii informacji o mojej ofercie pomocy, bez imienia i danych kontaktowych.</span>
+      </label>
+      <div class="field" data-req="consent">
+        <label class="check">
+          <input type="checkbox" name="zgoda_rodo">
+          <span>Wyrażam zgodę na przetwarzanie podanych danych przez Zespół Charytatywny parafii w celu zorganizowania pomocy. <span class="req">*</span></span>
+        </label>
+        <div class="err"></div>
+      </div>
+    </div>
+    <p class="privacy">Twoje dane zobaczy tylko koordynator Zespołu Charytatywnego. Bez Twojej zgody nie przekażemy ich nikomu.</p>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="primary">Wyślij zgłoszenie</button>
+    <span class="form-msg" role="alert"></span>
+  </div>
+</form>
+
+<div class="card done" tabindex="-1" hidden>
+  <div class="done-icon" aria-hidden="true">✓</div>
+  <h2>Dziękujemy za chęć pomocy!</h2>
+  <p>Koordynator Zespołu Charytatywnego skontaktuje się z Tobą, gdy pojawi się potrzeba pasująca do Twojej oferty.</p>
+  <button type="button" class="ghost" data-again>Wyślij kolejne zgłoszenie</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
