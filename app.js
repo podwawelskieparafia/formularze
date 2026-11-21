@@ -26,7 +26,8 @@
   // Automatyczna wysokość: strona podaje swoją wysokość stronie-rodzicowi (iframe).
   function postHeight() {
     if (window.parent === window) return;
-    window.parent.postMessage({ type: "iframe-height", height: document.documentElement.scrollHeight }, "*");
+    var h = Math.ceil(document.body.getBoundingClientRect().height);
+    window.parent.postMessage({ type: "iframe-height", height: h }, "*");
   }
   if ("ResizeObserver" in window) new ResizeObserver(postHeight).observe(document.body);
   window.addEventListener("load", postHeight);
