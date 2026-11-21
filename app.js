@@ -3,7 +3,7 @@
 
   // ===== KONFIGURACJA =====
   // Adres aplikacji internetowej Google Apps Script (kończy się na /exec).
-  var SCRIPT_URL = "";
+  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsSKqr0vUuMj4HB0Z5D8hJVTzVQKIUOZKLmRaMEwlgzYleFCrBjXU6YNagKACJ8sSWGw/exec";
 
   // Kategorie pomocy (wspólne dla obu formularzy).
   var CATEGORIES = [
