@@ -50,8 +50,6 @@
 
   var form = document.querySelector("form[data-form]");
   if (form) initForm(form);
-  var list = document.querySelector("[data-list]");
-  if (list) initList(list);
 
   function active(el) { return !el.closest("[hidden]"); }
 
@@ -219,54 +217,5 @@
       form.hidden = false;
       postHeight();
     });
-  }
-
-  function initList(box) {
-    var typ = params.get("typ") === "chce" ? "chce" : "szukam";
-    var title = box.querySelector(".list-title");
-    var status = box.querySelector(".list-status");
-    var ul = box.querySelector(".items");
-    title.textContent = typ === "chce" ? "Oferty pomocy" : "Aktualne potrzeby";
-
-    if (!SCRIPT_URL) { status.textContent = "Lista nie jest jeszcze podłączona."; return; }
-    status.textContent = "Wczytywanie…";
-
-    fetch(SCRIPT_URL + "?list=" + typ)
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
-        var items = (res && res.ok && res.items) || [];
-        status.textContent = items.length ? "" : (typ === "chce"
-          ? "Obecnie nie ma opublikowanych ofert pomocy."
-          : "Obecnie nie ma opublikowanych potrzeb.");
-        items.forEach(function (it) {
-          var li = document.createElement("li");
-          li.className = "item";
-          var head = document.createElement("div");
-          head.className = "item-head";
-          var tags = document.createElement("div");
-          tags.className = "tags";
-          String(it.kategorie || "").split(",").forEach(function (c) {
-            c = c.trim();
-            if (!c) return;
-            var t = document.createElement("span");
-            t.className = "tag";
-            t.textContent = c;
-            tags.appendChild(t);
-          });
-          var date = document.createElement("span");
-          date.className = "item-date";
-          date.textContent = it.data || "";
-          head.append(tags, date);
-          var p = document.createElement("p");
-          p.className = "item-text";
-          p.textContent = it.opis;
-          li.append(head, p);
-          ul.appendChild(li);
-        });
-        postHeight();
-      })
-      .catch(function () {
-        status.textContent = "Nie udało się wczytać listy. Spróbuj odświeżyć stronę.";
-      });
   }
 })();
