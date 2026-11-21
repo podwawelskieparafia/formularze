@@ -167,8 +167,9 @@ button:disabled { opacity: .6; cursor: progress; }
   border: 1px solid var(--gold); color: var(--gold-dark);
   display: grid; place-items: center; font-size: 24px;
 }
+/* Jak wyróżnione pozycje menu na podwawelskie.pl (np. „Grupy duszpasterskie”) */
 .done h2 {
-  margin: 0 0 8px; color: var(--heading);
-  font-size: 17px; font-weight: 500; letter-spacing: .15em; text-transform: uppercase;
+  margin: 0 0 8px; color: var(--gold-dark);
+  font-size: 17px; font-weight: 700; line-height: 23px; letter-spacing: normal; text-transform: uppercase;
 }
 .done p { margin: 0 0 22px; color: var(--muted); }
