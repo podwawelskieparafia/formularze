@@ -1,6 +1,7 @@
 /* Styl dopasowany do podwawelskie.pl: Montserrat, złoty akcent, ostre rogi, nagłówki z linią */
 :root {
-  --bg: #ffffff;
+  --bg: #ffffff;          /* tło pól formularza */
+  --panel: #f3f3f3;       /* tło całego formularza */
   --text: #212529;
   --heading: #343434;
   --muted: #6b6b6b;
@@ -17,6 +18,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #1b1b1b;
+  --panel: #242424;
   --text: #ececec;
   --heading: #f2f2f2;
   --muted: #a8a8a8;
@@ -34,6 +36,7 @@
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] {
     --bg: #1b1b1b;
+    --panel: #242424;
     --text: #ececec;
     --heading: #f2f2f2;
     --muted: #a8a8a8;
@@ -53,10 +56,11 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  background: var(--bg);
+  background: var(--panel);
   color: var(--text);
   font: 400 16px/1.6 Montserrat, "Segoe UI", Roboto, Arial, sans-serif;
-  padding: 4px;
+  /* odstępy od krawędzi: ok. 16 px na telefonie, do 44 px na komputerze */
+  padding: clamp(18px, 3.5vw, 36px) clamp(16px, 4.5vw, 44px);
 }
 [hidden] { display: none !important; }
 
