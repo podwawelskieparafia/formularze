@@ -16,7 +16,7 @@
  * doPost przyjmuje zgłoszenia z obu formularzy.
  *
  * doGet zwraca WYŁĄCZNIE listę próśb, które koordynator zaznaczył w kolumnie
- * "Opublikować" (i tylko gdy osoba zgodziła się na publikację). Z każdej prośby
+ * "Opublikować". Z każdej prośby
  * wychodzą tylko: ID, data dodania, rodzaj pomocy i "Opis publiczny" wpisany przez
  * koordynatora. Imiona, kontakty i oryginalny opis nigdy nie opuszczają arkusza.
  *
@@ -60,6 +60,8 @@ const STATUSES = ['Nowe', 'W trakcie', CLAIMED, 'Połączono', 'Zamknięte'];
 const CLOSED = ['Połączono', 'Zamknięte'];   // prośby z tym statusem nie są pokazywane
 const ADMIN_COLS = ['Status', 'Opublikować', 'Opis publiczny', 'Uwagi koordynatora'];
 const MATCH_COLS = ['Wolontariusz', 'Wybrana prośba'];   // kto do czego się zgłosił (na zielono)
+// Kolumny po zgodach usuniętych z formularzy; setup usuwa je z arkusza.
+const OBSOLETE_COLS = ['Zgoda na przekazanie kontaktu', 'Zgoda na publikację'];
 
 // [parametr z formularza, nagłówek kolumny, maks. długość]
 const FORMS = {
@@ -75,9 +77,7 @@ const FORMS = {
       ['kontakt_osoby', 'Kontakt do osoby', 200],
       ['osoba_wie', 'Osoba wie o zgłoszeniu', 20],
       ['kategorie', 'Rodzaj pomocy', 500],
-      ['opis', 'Opis potrzeby', 3000],
-      ['zgoda_kontakt', 'Zgoda na przekazanie kontaktu', 5],
-      ['zgoda_publikacja', 'Zgoda na publikację', 5]
+      ['opis', 'Opis potrzeby', 3000]
     ],
     required: ['typ', 'kategorie', 'opis'],
     extra: ['Wolontariusz', 'ID']
@@ -89,9 +89,7 @@ const FORMS = {
       ['telefon', 'Telefon', 30],
       ['email', 'E-mail', 120],
       ['kategorie', 'Rodzaj pomocy', 500],
-      ['opis', 'Opis pomocy', 3000],
-      ['zgoda_kontakt', 'Zgoda na przekazanie kontaktu', 5],
-      ['zgoda_publikacja', 'Zgoda na publikację', 5]
+      ['opis', 'Opis pomocy', 3000]
     ],
     required: ['kategorie', 'opis'],
     extra: ['Wybrana prośba', 'ID']
@@ -131,7 +129,12 @@ function setup() {
       sh.getRange(1, 1, 1, headers.length).setValues([headers]);
     } else {
       // Arkusz z danymi: dopisujemy tylko brakujące kolumny, na końcu.
-      const have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      let have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      // Usuwamy kolumny zgód, których formularze już nie mają (od prawej, żeby numery się nie przesuwały).
+      for (let c = have.length; c >= 1; c--) {
+        if (OBSOLETE_COLS.indexOf(have[c - 1]) !== -1) sh.deleteColumn(c);
+      }
+      have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
       const add = headers.filter(h => have.indexOf(h) === -1);
       if (add.length) sh.getRange(1, have.length + 1, 1, add.length).setValues([add]);
     }
@@ -227,13 +230,12 @@ function publicRequests_() {
   return out;
 }
 
-// Prośba jest na liście, gdy: ma ID, koordynator zaznaczył "Opublikować",
-// osoba zgodziła się na publikację i prośba nie jest połączona/zamknięta.
+// Prośba jest na liście, gdy: ma ID, koordynator zaznaczył "Opublikować"
+// i prośba nie jest połączona/zamknięta.
 function isOpen_(t, r) {
   const c = t.col;
   return ID_RE.test(String(r[c['ID']]))
     && r[c['Opublikować']] === true
-    && r[c['Zgoda na publikację']] === 'Tak'
     && CLOSED.indexOf(r[c['Status']]) === -1;
 }
 
@@ -275,8 +277,6 @@ function handlePost_(p) {
 
   const values = Object.create(null);
   cfg.fields.forEach(function (f) { values[f[1]] = clean_(p[f[0]], f[2]); });
-  values['Zgoda na przekazanie kontaktu'] = p.zgoda_kontakt === 'Tak' ? 'Tak' : 'Nie';
-  values['Zgoda na publikację'] = p.zgoda_publikacja === 'Tak' ? 'Tak' : 'Nie';
 
   const missing = cfg.required.some(function (k) {
     if (claimId && k === 'kategorie') return false;   // rodzaj pomocy weźmiemy z prośby
