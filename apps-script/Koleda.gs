@@ -21,10 +21,16 @@
  * i nowy termin. Formularz pokaże nowy rok, a zgłoszenia zaczną trafiać do nowej
  * zakładki "Zgłoszenia 2027/28" (powstaje sama). Poprzednie lata zostają w swoich zakładkach.
  * Po dniu z pola "Zgłoszenia do" formularz przestaje przyjmować zgłoszenia.
+ *
+ * "Sprawdź termin": po podaniu adresu strona pokazuje "Data wizyty" i "Godzina wizyty",
+ * gdy Status = "Zaplanowane" (albo informację, że wizyta już się odbyła). W każdym innym
+ * przypadku odpowiedź jest ta sama ("termin nieustalony"), więc po adresie nie da się
+ * sprawdzić, kto złożył zgłoszenie. Imiona, telefony i uwagi nie opuszczają arkusza.
  */
 
 const MIN_FILL_MS = 3000;   // formularz wysłany szybciej niż 3 s po otwarciu = bot
 const MAX_PER_HOUR = 60;    // maks. liczba zgłoszeń na godzinę (łącznie)
+const MAX_LOOKUPS_PER_HOUR = 500;   // maks. liczba sprawdzeń terminu na godzinę (łącznie)
 const TZ = 'Europe/Warsaw';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -48,7 +54,12 @@ const SASIAD = 'Mieszkanie sąsiada';
 const TYPY = ['Moje mieszkanie', SASIAD];
 const PORY = ['Przed południem (9–14)', 'Po południu (16–21)', 'Obojętnie'];
 const STATUSES = ['Nowe', 'Zaplanowane', 'Po wizycie', 'Odwołane'];
-const ADMIN_COLS = ['Status', 'Termin wizyty', 'Uwagi kancelarii'];   // dla kancelarii (na żółto)
+// Kilka zgłoszeń tego samego mieszkania: pokazujemy najważniejsze.
+const RANK = { zaplanowane: 0, po: 1, brak: 2 };
+const PLANNED = 'Zaplanowane';
+const ADMIN_COLS = ['Status', 'Data wizyty', 'Godzina wizyty', 'Uwagi kancelarii'];   // dla kancelarii (na żółto)
+// Poprzednie nazwy kolumn; setup zamienia je na obecne (dane zostają).
+const RENAMED_COLS = { 'Termin wizyty': 'Data wizyty' };
 
 // [parametr z formularza, nagłówek kolumny, maks. długość]
 // Adres na początku: po posortowaniu Ulica -> Nr domu -> Nr mieszkania wychodzi trasa.
@@ -76,7 +87,8 @@ function setup() {
   ss.setSpreadsheetTimeZone(TZ);
   setupSettings_(ss);
   const s = settings_();
-  if (s.rok) yearSheet_(s.rok);
+  // Zakładka bieżącego roku: nowa albo istniejąca (dopisuje kolumny, odświeża formatowanie).
+  if (s.rok) prepare_(yearSheet_(s.rok));
 }
 
 // Zakładka "Ustawienia": brakujące ustawienia dopisujemy, istniejących wartości nie ruszamy.
@@ -130,8 +142,20 @@ function prepare_(sh) {
   if (sh.getLastRow() === 0) {
     sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   } else {
-    // Zakładka z danymi: dopisujemy tylko brakujące kolumny, na końcu.
-    const have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    let have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    // Kolumny o dawnych nazwach dostają obecne.
+    have.forEach(function (h, idx) {
+      const to = RENAMED_COLS[h];
+      if (to && have.indexOf(to) === -1) { sh.getRange(1, idx + 1).setValue(to); have[idx] = to; }
+    });
+    // "Godzina wizyty" wstawiamy zaraz za "Data wizyty".
+    const dc = have.indexOf('Data wizyty') + 1;
+    if (dc && have.indexOf('Godzina wizyty') === -1) {
+      sh.insertColumnAfter(dc);
+      sh.getRange(1, dc + 1).setValue('Godzina wizyty');
+      have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    }
+    // Pozostałe brakujące kolumny dopisujemy na końcu.
     const add = HEADERS.filter(h => have.indexOf(h) === -1);
     if (add.length) sh.getRange(1, have.length + 1, 1, add.length).setValues([add]);
   }
@@ -149,9 +173,22 @@ function prepare_(sh) {
     if (/^Uwagi/.test(h)) w = 320;
     if (h === 'Ulica' || h === 'Zgłaszający' || h === 'Sąsiad' || h === 'E-mail') w = 170;
     if (/^Nr /.test(h) || h === 'Dłuższe spotkanie') w = 90;
+    if (h === 'Data wizyty' || h === 'Godzina wizyty') w = 115;
     if (h === 'Pora odwiedzin' || h === 'Czyje mieszkanie') w = 150;
     sh.setColumnWidth(col, w);
     if (/^Uwagi/.test(h)) sh.getRange(2, col, rows, 1).setWrap(true);
+    if (h === 'Data wizyty') {
+      // Data z kalendarzykiem (dwuklik na komórce).
+      sh.getRange(2, col, rows, 1).setNumberFormat('dd.mm.yyyy')
+        .setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
+      sh.getRange(1, col).setNote('Dwuklik na komórce otwiera kalendarz. Termin widać na stronie w zakładce „Sprawdź termin”, gdy Status = Zaplanowane.');
+    }
+    if (h === 'Godzina wizyty') {
+      // Format "Godzina" (gg:mm). Przedział typu 16:00–18:00 też można wpisać: zostanie tekstem.
+      // Na stronę idzie godzina dokładnie tak, jak widać w komórce.
+      sh.getRange(2, col, rows, 1).clearDataValidations().setNumberFormat('hh:mm');
+      sh.getRange(1, col).setNote('Np. 16:00 (albo przedział 16:00–18:00).');
+    }
   });
   const dataCol = actual.indexOf('Data zgłoszenia') + 1;
   if (dataCol) sh.getRange(2, dataCol, rows, 1).setNumberFormat('dd.mm.yyyy hh:mm');
@@ -231,6 +268,7 @@ function handlePost_(p) {
   // Pułapka na boty: pole niewidoczne dla ludzi musi być puste.
   // Botowi odpowiadamy "ok", żeby nie próbował dalej.
   if (p.website) return json_({ ok: true });
+  if (p.form === 'sprawdz') return lookup_(p);
   if (p.form !== 'koleda') return json_({ ok: false, error: 'invalid' });
 
   // Formularz wysłany zbyt szybko po otwarciu strony.
@@ -283,6 +321,63 @@ function handlePost_(p) {
     lock.releaseLock();
   }
   return json_({ ok: true });
+}
+
+// ---------- "Sprawdź termin" ----------
+
+// Szuka zgłoszenia w zakładce bieżącego roku po adresie (ulica, nr domu, nr mieszkania).
+// Zwraca tylko: zaplanowane (data, godzina), po wizycie albo "brak" - to samo dla
+// zgłoszenia nowego, odwołanego i nieistniejącego.
+function lookup_(p) {
+  const ulica = clean_(p.ulica, 80);
+  const dom = nr_(clean_(p.nr_domu, 10));
+  const lokal = nr_(clean_(p.nr_mieszkania, 10));
+  if (STREETS.indexOf(ulica) === -1 || !dom) return json_({ ok: false, error: 'invalid' });
+
+  // Limit sprawdzeń na godzinę (przybliżony, bez blokady).
+  const cache = CacheService.getScriptCache();
+  const key = 'q' + Math.floor(Date.now() / 3600000);
+  const count = Number(cache.get(key) || 0);
+  if (count >= MAX_LOOKUPS_PER_HOUR) return json_({ ok: false, error: 'rate_limited' });
+  cache.put(key, String(count + 1), 3600);
+
+  const s = settings_();
+  const sh = s.rok ? SpreadsheetApp.getActiveSpreadsheet().getSheetByName(PREFIX + s.rok) : null;
+  if (!sh || sh.getLastRow() < 2) return json_({ ok: true, wynik: 'brak' });
+  const rng = sh.getRange(1, 1, sh.getLastRow(), sh.getLastColumn());
+  const vals = rng.getValues();
+  const disp = rng.getDisplayValues();   // godzina dokładnie tak, jak widać w arkuszu
+  const col = Object.create(null);
+  vals[0].forEach(function (h, i) { if (h !== '' && !(h in col)) col[h] = i; });
+  if (col['Ulica'] === undefined || col['Nr domu'] === undefined) return json_({ ok: true, wynik: 'brak' });
+  const cell = (r, h) => (col[h] === undefined ? '' : r[col[h]]);
+
+  let best = null;
+  for (let i = 1; i < vals.length; i++) {
+    const r = vals[i];
+    if (String(cell(r, 'Ulica')).trim() !== ulica) continue;
+    if (nr_(cell(r, 'Nr domu')) !== dom || nr_(cell(r, 'Nr mieszkania')) !== lokal) continue;
+    const res = visit_(r, disp[i], cell);
+    if (!best || RANK[res.wynik] < RANK[best.wynik]) best = res;
+  }
+  return json_(Object.assign({ ok: true }, best || { wynik: 'brak' }));
+}
+
+function visit_(r, d, cell) {
+  const status = String(cell(r, 'Status')).trim();
+  if (status === PLANNED) {
+    const data = date_(cell(r, 'Data wizyty'));
+    // "Zaplanowane" bez daty: dla mieszkańca to wciąż "termin nieustalony".
+    if (!data) return { wynik: 'brak' };
+    return { wynik: 'zaplanowane', data: day_(data), godzina: String(cell(d, 'Godzina wizyty')).trim().slice(0, 40) };
+  }
+  if (status === 'Po wizycie') return { wynik: 'po' };
+  return { wynik: 'brak' };
+}
+
+// Numer domu / mieszkania do porównania: "15 A" = "15a", 18 (liczba) = "18".
+function nr_(v) {
+  return String(v == null ? '' : v).toLowerCase().replace(/\s+/g, '');
 }
 
 // ---------- Pomocnicze ----------

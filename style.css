@@ -202,6 +202,15 @@ button:disabled { opacity: .6; cursor: progress; }
   transition: background .15s, color .15s;
 }
 .switch a + a { border-left: 1px solid var(--gold); }
+/* Zakładki na jednej stronie (kolęda) wyglądają jak przełącznik formularzy */
+.switch button {
+  display: block; width: 100%; border: 0; padding: 12px 10px;
+  color: var(--gold-dark); background: var(--bg);
+}
+.switch button + button { border-left: 1px solid var(--gold); }
+.switch button:hover { background: var(--gold-soft); }
+.switch button:focus-visible { box-shadow: inset 0 0 0 3px var(--focus); }
+.switch button[aria-selected="true"] { background: var(--gold-dark); color: var(--on-gold); cursor: default; }
 .switch a:hover { background: var(--gold-soft); }
 .switch a:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--focus); }
 .switch a[aria-current="page"] { background: var(--gold-dark); color: var(--on-gold); cursor: default; pointer-events: none; }
@@ -300,3 +309,18 @@ button:disabled { opacity: .6; cursor: progress; }
   .addr { grid-template-columns: 1fr 1fr; }
   .addr-street { grid-column: 1 / -1; }
 }
+
+/* „Sprawdź termin”: wynik */
+.lookup-result {
+  display: grid; gap: 4px;
+  margin-top: 22px; padding: 16px 20px;
+  background: var(--bg); border: 1px solid var(--border); border-left: 5px solid var(--gold);
+  color: var(--heading);
+}
+.lookup-result strong { font-size: 1.05rem; font-weight: 700; }
+.lookup-result span { color: var(--text); font-size: .95rem; }
+.lookup-result .lookup-lead { color: var(--muted); font-size: .88rem; }
+.lookup-result.is-planned { background: var(--gold-soft); border-color: var(--gold); }
+.lookup-result.is-planned strong { color: var(--gold-dark); font-size: 1.25rem; }
+.lookup-result.is-planned strong + span { font-size: 1.1rem; font-weight: 600; color: var(--heading); }
+.lookup-result.is-missing { background: var(--notice); border-color: var(--gold); border-left-color: var(--gold); }

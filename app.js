@@ -56,8 +56,14 @@
     });
   });
 
-  var form = document.querySelector("form[data-form]");
-  if (form) initForm(form);
+  // Lista ulic w „Sprawdź termin” = ta sama co w formularzu zgłoszenia.
+  document.querySelectorAll("select[data-streets-from]").forEach(function (s) {
+    var src = document.getElementById(s.getAttribute("data-streets-from"));
+    if (src) s.innerHTML = src.innerHTML;
+  });
+
+  var tabs = initTabs();
+  document.querySelectorAll("form[data-form]").forEach(function (f) { initForm(f); });
 
   function active(el) { return !el.closest("[hidden]"); }
 
@@ -208,6 +214,60 @@
     };
   }
 
+  // ===== Zakładki na jednej stronie (kolęda: „Zgłoś wizytę” / „Sprawdź termin”) =====
+  function initTabs() {
+    var buttons = document.querySelectorAll("[data-tab]");
+    if (!buttons.length) return null;
+    var touched = false;
+    function show(name) {
+      buttons.forEach(function (b) {
+        b.setAttribute("aria-selected", b.getAttribute("data-tab") === name ? "true" : "false");
+      });
+      document.querySelectorAll("[data-panel]").forEach(function (p) {
+        p.hidden = p.getAttribute("data-panel") !== name;
+      });
+      postHeight();
+    }
+    buttons.forEach(function (b) {
+      b.addEventListener("click", function () { touched = true; show(b.getAttribute("data-tab")); });
+    });
+    show(location.hash === "#sprawdz" ? "sprawdz" : buttons[0].getAttribute("data-tab"));
+    return { show: show, touched: function () { return touched; } };
+  }
+
+  // ===== „Sprawdź termin”: wynik wyszukiwania zgłoszenia =====
+  var visitFmt = new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  var KANCELARIA = "Kancelaria parafialna: tel. (12)\u00a0266\u00a062\u00a082.";
+  function showResult(box, res) {
+    var w = res && res.wynik;
+    var title = document.createElement("strong");
+    var text = document.createElement("span");
+    box.textContent = "";
+    box.className = "lookup-result";
+    if (w === "zaplanowane") {
+      box.classList.add("is-planned");
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(res.data || "");
+      title.textContent = m ? visitFmt.format(new Date(+m[1], +m[2] - 1, +m[3])) + " r." : "";
+      text.textContent = res.godzina ? "godz. " + res.godzina : "Godzinę poda kancelaria.";
+      var lead = document.createElement("span");
+      lead.className = "lookup-lead";
+      lead.textContent = "Wizyta duszpasterska jest zaplanowana:";
+      box.append(lead);
+    } else if (w === "po") {
+      title.textContent = "Wizyta już się odbyła";
+      text.textContent = "Dziękujemy za przyjęcie kapłana.";
+    } else {
+      // Serwer celowo nie odróżnia „zgłoszenie czeka” od „nie ma zgłoszenia” (prywatność).
+      box.classList.add("is-missing");
+      title.textContent = "Termin nie jest jeszcze ustalony";
+      text.textContent = "Jeśli zgłoszenie zostało wysłane, termin pojawi się tutaj, gdy kancelaria go ustali. " +
+        "Sprawdź też, czy adres jest wpisany tak samo jak w zgłoszeniu. " + KANCELARIA;
+    }
+    box.append(title, text);
+    box.hidden = false;
+    postHeight();
+  }
+
   // ===== Formularz „Wizyta duszpasterska”: rok i termin z arkusza (zakładka „Ustawienia”) =====
   // Po zmianie roku w arkuszu strona sama pokazuje nowy rok; po terminie zamiast formularza
   // jest informacja „Zapisy zakończone”. Gdy ustawień nie da się pobrać, formularz działa
@@ -235,7 +295,11 @@
             (dateFmt.format(new Date(+m[1], +m[2] - 1, +m[3])) + " r.").replace(/ /g, "\u00a0");
           box.hidden = false;
         }
-        if (!s.otwarte) close();
+        if (!s.otwarte) {
+          close();
+          // Po terminie zgłoszeń ludzie przychodzą głównie sprawdzić termin wizyty.
+          if (tabs && !tabs.touched()) tabs.show("sprawdz");
+        }
         postHeight();
       })
       .catch(function () {});
@@ -245,13 +309,14 @@
   function initForm(form) {
     var started = Date.now();
     var kind = form.getAttribute("data-form");
-    var url = kind === "koleda" ? KOLEDA_URL : SCRIPT_URL;
+    var lookup = kind === "sprawdz";   // „Sprawdź termin”: wynik pod formularzem zamiast podziękowania
+    var url = kind === "koleda" || lookup ? KOLEDA_URL : SCRIPT_URL;
     var submitBtn = form.querySelector('button[type="submit"]');
     var submitLabel = submitBtn.textContent;
     var msg = form.querySelector(".form-msg");
-    var done = document.querySelector(".done");
+    var done = lookup ? null : document.querySelector(".done");
     var requests = initRequests(form);
-    var season = initSeason(form, url);
+    var season = kind === "koleda" ? initSeason(form, url) : null;
 
     // Pokazywanie pól zależnie od wybranego typu zgłoszenia
     function applyTyp() {
@@ -399,12 +464,14 @@
         return;
       }
       submitBtn.disabled = true;
-      submitBtn.textContent = "Wysyłanie…";
+      submitBtn.textContent = lookup ? "Sprawdzanie…" : "Wysyłanie…";
       var picked = requests ? requests.selected() : "";
       fetch(url, { method: "POST", body: collect() })
         .then(function (r) { return r.json(); })
         .then(function (res) {
-          if (res && res.ok) {
+          if (res && res.ok && lookup) {
+            showResult(form.querySelector("[data-result]"), res);
+          } else if (res && res.ok) {
             var dg = done.querySelector("[data-done-general]");
             var dr = done.querySelector("[data-done-request]");
             if (dg && dr) { dg.hidden = !!picked; dr.hidden = !picked; }

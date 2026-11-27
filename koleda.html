@@ -8,10 +8,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
+<!-- Dwie zakładki na jednej stronie; koleda.html#sprawdz otwiera od razu „Sprawdź termin”. -->
+<div class="switch" role="tablist" aria-label="Wizyta duszpasterska">
+  <button type="button" role="tab" data-tab="zglos">Zgłoś wizytę</button>
+  <button type="button" role="tab" data-tab="sprawdz">Sprawdź termin</button>
+</div>
+
+<div data-panel="zglos">
 <div class="info">
   <!-- Rok i termin podstawia app.js z zakładki „Ustawienia” w arkuszu. -->
   <p class="info-title">Wizyta duszpasterska <span data-rok></span></p>
@@ -169,10 +176,45 @@
 <div class="card done" tabindex="-1" hidden>
   <div class="done-icon" aria-hidden="true">✓</div>
   <h2>Dziękujemy! Zgłoszenie zostało przyjęte.</h2>
-  <p>W&nbsp;razie pytań zadzwonimy na podany numer. Kancelaria parafialna: tel. (12)&nbsp;266&nbsp;62&nbsp;82, wtorek i&nbsp;czwartek 16.00–17.30, środa i&nbsp;sobota 9.00–10.00.</p>
+  <p>Gdy kancelaria ustali termin, zobaczysz go w&nbsp;zakładce „Sprawdź termin”. W&nbsp;razie pytań zadzwonimy na podany numer. Kancelaria parafialna: tel. (12)&nbsp;266&nbsp;62&nbsp;82, wtorek i&nbsp;czwartek 16.00–17.30, środa i&nbsp;sobota 9.00–10.00.</p>
   <button type="button" class="ghost" data-again>Zgłoś kolejne mieszkanie</button>
 </div>
+</div>
 
-<script src="app.js?v=17"></script>
+<div data-panel="sprawdz" hidden>
+<form class="card" data-form="sprawdz" novalidate>
+  <div class="hp" aria-hidden="true">
+    <label>Nie wypełniaj tego pola <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  </div>
+  <div class="section">
+    <p class="section-title">Sprawdź termin wizyty</p>
+    <p class="section-note">Podaj adres z&nbsp;Twojego zgłoszenia. Termin zobaczysz, gdy kancelaria go ustali.</p>
+    <div class="addr">
+      <div class="field addr-street" data-req="text" data-msg="Wybierz ulicę.">
+        <label for="l-ulica">Ulica <span class="req">*</span></label>
+        <!-- Lista ulic kopiowana z formularza zgłoszenia (app.js), żeby była w jednym miejscu. -->
+        <select id="l-ulica" name="ulica" data-streets-from="w-ulica"></select>
+        <div class="err"></div>
+      </div>
+      <div class="field" data-req="house" data-msg="Podaj numer domu.">
+        <label for="l-dom">Nr domu <span class="req">*</span></label>
+        <input id="l-dom" type="text" name="nr_domu" maxlength="10">
+        <div class="err"></div>
+      </div>
+      <div class="field">
+        <label for="l-lokal">Nr mieszkania</label>
+        <input id="l-lokal" type="text" name="nr_mieszkania" maxlength="10">
+      </div>
+    </div>
+  </div>
+  <div class="actions">
+    <button type="submit" class="primary">Sprawdź</button>
+    <span class="form-msg" role="alert"></span>
+  </div>
+  <div class="lookup-result" data-result aria-live="polite" hidden></div>
+</form>
+</div>
+
+<script src="app.js?v=18"></script>
 </body>
 </html>
