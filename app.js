@@ -23,11 +23,6 @@
   document.documentElement.setAttribute("data-theme",
     theme === "dark" || theme === "auto" ? theme : "light");
 
-  // Przełącznik formularzy: zachowujemy parametry adresu (np. ?theme=dark).
-  document.querySelectorAll(".switch a").forEach(function (a) {
-    a.href = a.getAttribute("href") + location.search;
-  });
-
   // Automatyczna wysokość: strona podaje swoją wysokość stronie-rodzicowi (iframe).
   function postHeight() {
     if (window.parent === window) return;

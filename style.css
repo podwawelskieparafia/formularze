@@ -174,7 +174,7 @@ button:disabled { opacity: .6; cursor: progress; }
 }
 .done p { margin: 0 0 22px; color: var(--muted); }
 
-/* Przełącznik między formularzami "Chcę pomóc" / "Szukam pomocy" */
+/* Przełącznik między formularzami: przenosi całą stronę (target="_top") na odpowiednią podstronę podwawelskie.pl */
 .switch { display: grid; grid-template-columns: 1fr 1fr; margin: 0 0 14px; border: 1px solid var(--gold); }
 .switch a {
   display: block; text-align: center; text-decoration: none;
@@ -186,7 +186,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .switch a + a { border-left: 1px solid var(--gold); }
 .switch a:hover { background: var(--gold-soft); }
 .switch a:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--focus); }
-.switch a[aria-current="page"] { background: var(--gold-dark); color: var(--on-gold); cursor: default; }
+.switch a[aria-current="page"] { background: var(--gold-dark); color: var(--on-gold); cursor: default; pointer-events: none; }
 @media (max-width: 360px) { .switch a { font-size: 12px; letter-spacing: .08em; padding: 11px 6px; } }
 
 /* Informacja o koordynatorze pomocy i danych, pod przełącznikiem */
