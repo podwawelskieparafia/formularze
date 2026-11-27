@@ -58,6 +58,150 @@
 
   function active(el) { return !el.closest("[hidden]"); }
 
+  // ===== Lista próśb w formularzu „Chcę pomóc” =====
+  // Serwer zwraca tylko prośby zaznaczone przez koordynatora do publikacji
+  // i tylko dane anonimowe: rodzaj pomocy, opis publiczny, datę dodania.
+  function initRequests(form) {
+    var box = form.querySelector("[data-requests]");
+    if (!box) return null;
+    if (!SCRIPT_URL) { box.hidden = true; return null; }
+    var list = box.querySelector(".requests");
+    var loading = box.querySelector("[data-loading]");
+    var empty = box.querySelector("[data-empty]");
+    var more = box.querySelector("[data-more]");
+    var unpick = box.querySelector("[data-unpick]");
+    var intro = box.querySelector("[data-requests-note]");
+    var note = form.querySelector("[data-picked]");
+    var SHOW = 3;
+    var items = [];
+    var expanded = false;
+    var dateFmt = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long" });
+
+    function fmtDate(s) {
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || "");
+      return m ? dateFmt.format(new Date(+m[1], +m[2] - 1, +m[3])) : "";
+    }
+
+    function card(it) {
+      var label = document.createElement("label");
+      label.className = "request";
+      var input = document.createElement("input");
+      input.type = "radio";
+      input.name = "zgloszenie";
+      input.value = it.id;
+      var body = document.createElement("span");
+      body.className = "request-body";
+      var cats = document.createElement("span");
+      cats.className = "request-cats";
+      cats.textContent = (it.kategorie || []).join(" · ");
+      var text = document.createElement("span");
+      text.className = "request-text";
+      // Spójniki i przyimki jednoliterowe nie zostają na końcu wiersza.
+      text.textContent = (it.opis || "Szczegóły przekaże koordynator.")
+        .replace(/(^|\s)([aiouwzAIOUWZ])\s+/g, "$1$2\u00a0")
+        .replace(/(\u00a0)([aiouwzAIOUWZ])\s+/g, "$1$2\u00a0");
+      if (!it.opis) text.classList.add("is-muted");
+      body.append(cats, text);
+      var d = fmtDate(it.data);
+      if (d) {
+        var date = document.createElement("span");
+        date.className = "request-date";
+        date.textContent = "Dodano " + d;
+        body.append(date);
+      }
+      var pick = document.createElement("span");
+      pick.className = "request-pick";
+      pick.setAttribute("aria-hidden", "true");
+      label.append(input, body, pick);
+      return label;
+    }
+
+    function render() {
+      var sel = selected();
+      list.textContent = "";
+      loading.hidden = true;
+      empty.hidden = items.length > 0;
+      var shown = expanded ? items : items.slice(0, SHOW);
+      shown.forEach(function (it) { list.appendChild(card(it)); });
+      if (sel) {
+        var input = list.querySelector('input[value="' + CSS.escape(sel) + '"]');
+        if (input) input.checked = true;
+      }
+      more.textContent = "Pokaż wszystkie (" + items.length + ")";
+      update();
+    }
+
+    function selected() {
+      var c = list.querySelector("input:checked");
+      return c ? c.value : "";
+    }
+
+    function uncheck() {
+      var c = list.querySelector("input:checked");
+      if (c) c.checked = false;
+    }
+
+    // Po wyborze prośby zostaje na liście tylko ona, a pytanie „W czym możesz pomóc?”
+    // znika, bo rodzaj pomocy wynika z prośby. „Anuluj wybór” przywraca wszystko.
+    function update() {
+      var has = !!selected();
+      list.querySelectorAll(".request").forEach(function (l) {
+        l.hidden = has && !l.querySelector("input").checked;
+      });
+      more.hidden = has || expanded || items.length <= SHOW;
+      unpick.hidden = !has;
+      intro.hidden = has;
+      note.hidden = !has;
+      form.querySelectorAll("[data-general]").forEach(function (el) { el.hidden = has; });
+      postHeight();
+    }
+
+    list.addEventListener("change", update);
+    more.addEventListener("click", function () { expanded = true; render(); });
+    unpick.addEventListener("click", function () { uncheck(); update(); });
+
+    function load() {
+      return fetch(SCRIPT_URL + "?action=prosby", { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (!res || !res.ok || !Array.isArray(res.items)) throw new Error("bad");
+          items = res.items;
+          render();
+        })
+        .catch(function () {
+          // Bez listy formularz działa jak dotąd (ogólna oferta pomocy).
+          box.hidden = true;
+          uncheck();
+          update();
+        });
+    }
+    load();
+
+    return {
+      selected: selected,
+      // Rodzaj pomocy wybranej prośby (pole „W czym możesz pomóc?” jest wtedy ukryte).
+      categories: function () {
+        var id = selected();
+        var it = items.find(function (x) { return x.id === id; });
+        return it ? (it.kategorie || []) : [];
+      },
+      // Ktoś inny zdążył zgłosić się do tej prośby: odświeżamy listę bez niej.
+      taken: function () {
+        uncheck();
+        update();
+        return load().then(function () {
+          box.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      },
+      reset: function () {
+        expanded = false;
+        list.textContent = "";
+        update();
+        load();
+      }
+    };
+  }
+
   function initForm(form) {
     var started = Date.now();
     var kind = form.getAttribute("data-form");
@@ -65,6 +209,7 @@
     var submitLabel = submitBtn.textContent;
     var msg = form.querySelector(".form-msg");
     var done = document.querySelector(".done");
+    var requests = initRequests(form);
 
     // Pokazywanie pól zależnie od wybranego typu zgłoszenia
     function applyTyp() {
@@ -166,6 +311,7 @@
           data.set(el.name, el.value.trim());
         }
       });
+      if (!cats.length && requests) cats = requests.categories();
       data.set("kategorie", cats.join(", "));
       return data;
     }
@@ -175,6 +321,7 @@
         case "too_fast": return "Formularz został wysłany zbyt szybko. Odczekaj chwilę i spróbuj ponownie.";
         case "rate_limited": return "Otrzymaliśmy teraz bardzo dużo zgłoszeń. Spróbuj ponownie za godzinę.";
         case "invalid": return "Uzupełnij wymagane pola i spróbuj ponownie.";
+        case "taken": return "Ktoś przed chwilą zgłosił się do tej prośby. Lista została odświeżona: wybierz inną prośbę albo wyślij ogólną ofertę pomocy.";
         default: return "Coś poszło nie tak. Spróbuj ponownie za chwilę.";
       }
     }
@@ -189,10 +336,14 @@
       }
       submitBtn.disabled = true;
       submitBtn.textContent = "Wysyłanie…";
+      var picked = requests ? requests.selected() : "";
       fetch(SCRIPT_URL, { method: "POST", body: collect() })
         .then(function (r) { return r.json(); })
         .then(function (res) {
           if (res && res.ok) {
+            var dg = done.querySelector("[data-done-general]");
+            var dr = done.querySelector("[data-done-request]");
+            if (dg && dr) { dg.hidden = !!picked; dr.hidden = !picked; }
             form.hidden = true;
             done.hidden = false;
             done.focus();
@@ -200,6 +351,7 @@
             postHeight();
           } else {
             msg.textContent = errorText(res && res.error);
+            if (res && res.error === "taken" && requests) requests.taken();
           }
         })
         .catch(function () {
@@ -220,6 +372,7 @@
       applyTyp();
       done.hidden = true;
       form.hidden = false;
+      if (requests) requests.reset();
       postHeight();
     });
   }

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 
@@ -22,6 +22,19 @@
 <form class="card" data-form="chce" novalidate>
   <div class="hp" aria-hidden="true">
     <label>Nie wypełniaj tego pola <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  </div>
+
+  <!-- Prośby opublikowane przez koordynatora (tylko opis potrzeby, bez danych osobowych) -->
+  <div class="section" data-requests>
+    <p class="section-title">Kto teraz potrzebuje pomocy</p>
+    <p class="section-note" data-requests-note>Wybierz prośbę, w&nbsp;której możesz pomóc, albo przejdź niżej i&nbsp;zostaw ogólną ofertę pomocy. Szczegóły i&nbsp;kontakt przekaże koordynator.</p>
+    <p class="requests-status" data-loading>Wczytywanie próśb…</p>
+    <p class="requests-status" data-empty hidden>Teraz nikt nie czeka na pomoc z&nbsp;listy. Zostaw ogólną ofertę, a&nbsp;koordynator odezwie się, gdy ktoś będzie potrzebował wsparcia.</p>
+    <div class="requests" role="radiogroup" aria-label="Prośby o pomoc"></div>
+    <div class="requests-foot">
+      <button type="button" class="ghost" data-more hidden></button>
+      <button type="button" class="linkish" data-unpick hidden>Anuluj wybór</button>
+    </div>
   </div>
 
   <div class="section">
@@ -49,7 +62,7 @@
 
   <div class="section">
     <p class="section-title">Pomoc</p>
-    <fieldset class="field" data-req="any" data-msg="Wybierz co najmniej jeden rodzaj pomocy.">
+    <fieldset class="field" data-req="any" data-msg="Wybierz co najmniej jeden rodzaj pomocy." data-general>
       <legend>W czym możesz pomóc? <span class="req">*</span></legend>
       <div class="checks" data-categories="c"></div>
       <div class="err"></div>
@@ -82,6 +95,8 @@
     <p class="privacy">Twoje dane zobaczy tylko koordynator Zespołu Charytatywnego. Bez Twojej zgody nie przekażemy ich nikomu.</p>
   </div>
 
+  <p class="picked-note" data-picked hidden>Zgłaszasz się do wybranej prośby. Po wysłaniu formularza zniknie ona z&nbsp;listy, aby nikt inny się do niej nie zgłosił.</p>
+
   <div class="actions">
     <button type="submit" class="primary">Wyślij zgłoszenie</button>
     <span class="form-msg" role="alert"></span>
@@ -91,10 +106,11 @@
 <div class="card done" tabindex="-1" hidden>
   <div class="done-icon" aria-hidden="true">✓</div>
   <h2>Dziękujemy za chęć pomocy!</h2>
-  <p>Koordynator Zespołu Charytatywnego skontaktuje się z Tobą, gdy pojawi się potrzeba pasująca do Twojej oferty.</p>
+  <p data-done-general>Koordynator Zespołu Charytatywnego skontaktuje się z Tobą, gdy pojawi się potrzeba pasująca do Twojej oferty.</p>
+  <p data-done-request hidden>Prośba jest zarezerwowana dla Ciebie i&nbsp;zniknęła z&nbsp;listy. Koordynator Zespołu Charytatywnego skontaktuje się z&nbsp;Tobą i&nbsp;przekaże szczegóły.</p>
   <button type="button" class="ghost" data-again>Wyślij kolejne zgłoszenie</button>
 </div>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
