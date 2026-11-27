@@ -236,49 +236,73 @@
   }
 
   // ===== „Sprawdź termin”: wynik wyszukiwania zgłoszenia =====
-  var visitFmt = new Intl.DateTimeFormat("pl-PL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-  var KANCELARIA = "Kancelaria parafialna: tel. (12)\u00a0266\u00a062\u00a082.";
+  var KANCELARIA = "Kancelaria parafialna: tel. (12) 266 62 82.";
+  var WEEKDAY_IN = ["w niedzielę", "w poniedziałek", "we wtorek", "w środę", "w czwartek", "w piątek", "w sobotę"];
+  var dayFmt = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+  var monFmt = new Intl.DateTimeFormat("pl-PL", { month: "short" });
+  var wdFmt = new Intl.DateTimeFormat("pl-PL", { weekday: "short" });
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function nb(s) { return s.replace(/ /g, " "); }
+
+  // Zaplanowana wizyta jako ogłoszenie, np.:
+  // „Ks. Jan Kowalski odwiedzi Państwa we wtorek, 5 stycznia 2027 r., około godz. 16:00.”
+  function plannedVisit(box, res) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(res.data || "");
+    if (!m) return false;
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    var g = String(res.godzina || "").trim();
+    var who = String(res.ksiadz || "").trim();
+
+    var cal = el("div", "cal");
+    cal.setAttribute("aria-hidden", "true");
+    cal.append(el("span", "cal-mon", monFmt.format(d).replace(".", "")),
+      el("span", "cal-day", String(d.getDate())),
+      el("span", "cal-wd", wdFmt.format(d)));
+
+    var text = el("p", "visit-text");
+    function add(t, bold) { text.append(bold ? el("strong", null, t) : document.createTextNode(t)); }
+    if (who) { add(who.charAt(0).toUpperCase() + who.slice(1), true); add(" odwiedzi Państwa "); }
+    else add("Kapłan odwiedzi Państwa ");
+    add(nb(WEEKDAY_IN[d.getDay()]) + ", " + nb(dayFmt.format(d)) + " r.", true);
+    var range = /^(\d{1,2}[:.]\d{2})\s*[–—-]\s*(\d{1,2}[:.]\d{2})$/.exec(g);
+    if (range) { add(", między "); add("godz. " + range[1], true); add(" a "); add(range[2], true); add("."); }
+    else if (/^\d{1,2}[:.]\d{2}$/.test(g)) { add(", około "); add("godz. " + g, true); add("."); }
+    else if (g) { add(", "); add("godz. " + g, true); add("."); }
+
+    var body = el("div", "visit");
+    body.append(el("span", "visit-lead", "Termin wizyty duszpasterskiej"), text,
+      el("span", "visit-note", g
+        ? "Godzina jest orientacyjna: kapłan może przyjść do 30 minut wcześniej lub później."
+        : "Dokładną godzinę wizyty poda kancelaria parafialna."));
+    box.classList.add("is-planned");
+    box.append(cal, body);
+    return true;
+  }
+
   function showResult(box, res) {
     var w = res && res.wynik;
-    var title = document.createElement("strong");
-    var text = document.createElement("span");
     box.textContent = "";
     box.className = "lookup-result";
-    if (w === "zaplanowane") {
-      box.classList.add("is-planned");
-      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(res.data || "");
-      title.textContent = m ? visitFmt.format(new Date(+m[1], +m[2] - 1, +m[3])) + " r." : "";
-      text.textContent = res.godzina ? "godz. " + res.godzina : "Godzinę poda kancelaria.";
-      var lead = document.createElement("span");
-      lead.className = "lookup-lead";
-      lead.textContent = "Wizyta duszpasterska jest zaplanowana:";
-      box.append(lead, title, text);
-      if (res.ksiadz) {
-        var who = document.createElement("span");
-        who.className = "lookup-priest";
-        who.textContent = "Kapłan: " + res.ksiadz;
-        box.append(who);
+    if (!(w === "zaplanowane" && plannedVisit(box, res))) {
+      var title, text;
+      if (w === "po") {
+        title = "Wizyta już się odbyła";
+        text = "Dziękujemy za przyjęcie kapłana.";
+      } else {
+        // Serwer celowo nie odróżnia „zgłoszenie czeka” od „nie ma zgłoszenia” (prywatność).
+        box.classList.add("is-missing");
+        title = "Termin nie jest jeszcze ustalony";
+        text = "Jeśli zgłoszenie zostało wysłane, termin pojawi się tutaj, gdy kancelaria go ustali. " +
+          "Sprawdź też, czy adres jest wpisany tak samo jak w zgłoszeniu. " + KANCELARIA;
       }
-      if (res.godzina) {
-        var note = document.createElement("span");
-        note.className = "lookup-note";
-        note.textContent = "Godzina jest orientacyjna: kapłan może przyjść do 30 minut wcześniej lub później.";
-        box.append(note);
-      }
-      box.hidden = false;
-      postHeight();
-      return;
-    } else if (w === "po") {
-      title.textContent = "Wizyta już się odbyła";
-      text.textContent = "Dziękujemy za przyjęcie kapłana.";
-    } else {
-      // Serwer celowo nie odróżnia „zgłoszenie czeka” od „nie ma zgłoszenia” (prywatność).
-      box.classList.add("is-missing");
-      title.textContent = "Termin nie jest jeszcze ustalony";
-      text.textContent = "Jeśli zgłoszenie zostało wysłane, termin pojawi się tutaj, gdy kancelaria go ustali. " +
-        "Sprawdź też, czy adres jest wpisany tak samo jak w zgłoszeniu. " + KANCELARIA;
+      box.append(el("strong", null, title), el("span", null, text));
     }
-    box.append(title, text);
     box.hidden = false;
     postHeight();
   }
