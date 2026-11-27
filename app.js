@@ -252,7 +252,22 @@
       var lead = document.createElement("span");
       lead.className = "lookup-lead";
       lead.textContent = "Wizyta duszpasterska jest zaplanowana:";
-      box.append(lead);
+      box.append(lead, title, text);
+      if (res.ksiadz) {
+        var who = document.createElement("span");
+        who.className = "lookup-priest";
+        who.textContent = "Kapłan: " + res.ksiadz;
+        box.append(who);
+      }
+      if (res.godzina) {
+        var note = document.createElement("span");
+        note.className = "lookup-note";
+        note.textContent = "Godzina jest orientacyjna: kapłan może przyjść do 30 minut wcześniej lub później.";
+        box.append(note);
+      }
+      box.hidden = false;
+      postHeight();
+      return;
     } else if (w === "po") {
       title.textContent = "Wizyta już się odbyła";
       text.textContent = "Dziękujemy za przyjęcie kapłana.";

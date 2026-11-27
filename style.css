@@ -323,4 +323,6 @@ button:disabled { opacity: .6; cursor: progress; }
 .lookup-result.is-planned { background: var(--gold-soft); border-color: var(--gold); }
 .lookup-result.is-planned strong { color: var(--gold-dark); font-size: 1.25rem; }
 .lookup-result.is-planned strong + span { font-size: 1.1rem; font-weight: 600; color: var(--heading); }
+.lookup-result .lookup-priest { margin-top: 4px; font-weight: 600; color: var(--heading); }
+.lookup-result .lookup-note { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gold); color: var(--muted); font-size: .85rem; }
 .lookup-result.is-missing { background: var(--notice); border-color: var(--gold); border-left-color: var(--gold); }

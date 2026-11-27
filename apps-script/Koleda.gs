@@ -22,7 +22,10 @@
  * zakładki "Zgłoszenia 2027/28" (powstaje sama). Poprzednie lata zostają w swoich zakładkach.
  * Po dniu z pola "Zgłoszenia do" formularz przestaje przyjmować zgłoszenia.
  *
- * "Sprawdź termin": po podaniu adresu strona pokazuje "Data wizyty" i "Godzina wizyty",
+ * Księża: w zakładce "Ustawienia" w kolumnie "Księża" (E) wpisuje się kapłanów, jeden pod
+ * drugim. W kolumnie "Ksiądz" przy zgłoszeniu wybiera się kapłana z tej listy.
+ *
+ * "Sprawdź termin": po podaniu adresu strona pokazuje "Data wizyty", "Godzina wizyty" i "Ksiądz",
  * gdy Status = "Zaplanowane" (albo informację, że wizyta już się odbyła). W każdym innym
  * przypadku odpowiedź jest ta sama ("termin nieustalony"), więc po adresie nie da się
  * sprawdzić, kto złożył zgłoszenie. Imiona, telefony i uwagi nie opuszczają arkusza.
@@ -57,7 +60,11 @@ const STATUSES = ['Nowe', 'Zaplanowane', 'Po wizycie', 'Odwołane'];
 // Kilka zgłoszeń tego samego mieszkania: pokazujemy najważniejsze.
 const RANK = { zaplanowane: 0, po: 1, brak: 2 };
 const PLANNED = 'Zaplanowane';
-const ADMIN_COLS = ['Status', 'Data wizyty', 'Godzina wizyty', 'Uwagi kancelarii'];   // dla kancelarii (na żółto)
+const ADMIN_COLS = ['Status', 'Data wizyty', 'Godzina wizyty', 'Ksiądz', 'Uwagi kancelarii'];   // dla kancelarii (na żółto)
+// Lista księży w zakładce "Ustawienia": kolumna E, od 2. wiersza.
+const PRIESTS_HEAD = 'Księża';
+const PRIESTS_COL = 5;
+const PRIESTS_MAX = 50;
 // Poprzednie nazwy kolumn; setup zamienia je na obecne (dane zostają).
 const RENAMED_COLS = { 'Termin wizyty': 'Data wizyty' };
 
@@ -102,11 +109,14 @@ function setupSettings_(ss) {
   }
   if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, 3).setValues([['Ustawienie', 'Wartość', 'Opis']]);
   const keys = sh.getRange(1, 1, sh.getLastRow(), 1).getValues().map(r => String(r[0]).trim());
+  // Ostatni wiersz z ustawieniem w kolumnie A (lista księży w kolumnie E może być dłuższa).
+  let lastA = keys.length;
+  while (lastA > 0 && !keys[lastA - 1]) lastA--;
   DEFAULTS.forEach(function (d) {
     let row = keys.indexOf(d[0]) + 1;
     if (!row) {
-      row = sh.getLastRow() + 1;
-      keys.push(d[0]);
+      row = ++lastA;
+      keys[row - 1] = d[0];
       // Rok jako tekst: inaczej Arkusze mogłyby zamienić np. "2027/01" na datę.
       if (d[0] === SET_ROK) sh.getRange(row, 2).setNumberFormat('@');
       sh.getRange(row, 1, 1, 3).setValues([d]);
@@ -119,9 +129,17 @@ function setupSettings_(ss) {
     }
   });
   sh.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#e8eaed');
-  sh.getRange(2, 2, Math.max(sh.getLastRow() - 1, 1), 1).setBackground('#fff2cc').setFontWeight('bold');
+  sh.getRange(2, 2, DEFAULTS.length, 1).setBackground('#fff2cc').setFontWeight('bold');
   sh.setColumnWidth(1, 160); sh.setColumnWidth(2, 130); sh.setColumnWidth(3, 560);
-  sh.getRange(1, 3, sh.getLastRow(), 1).setWrap(true);
+  sh.getRange(1, 3, DEFAULTS.length + 1, 1).setWrap(true);
+
+  // Lista księży (kolumna E): z niej wybiera się kapłana w kolumnie "Ksiądz".
+  const head = sh.getRange(1, PRIESTS_COL);
+  if (String(head.getValues()[0][0]).trim() === '') head.setValue(PRIESTS_HEAD);
+  head.setFontWeight('bold').setBackground('#e8eaed')
+    .setNote('Wpisz kapłanów jeden pod drugim, np. „ks. Jan Kowalski”. Pojawią się na liście w kolumnie „Ksiądz” w zakładce zgłoszeń i na stronie w „Sprawdź termin”.');
+  sh.getRange(2, PRIESTS_COL, PRIESTS_MAX, 1).setBackground('#fff2cc').setNumberFormat('@');
+  sh.setColumnWidth(PRIESTS_COL - 1, 30); sh.setColumnWidth(PRIESTS_COL, 220);
   sh.setFrozenRows(1);
 }
 
@@ -148,12 +166,15 @@ function prepare_(sh) {
       const to = RENAMED_COLS[h];
       if (to && have.indexOf(to) === -1) { sh.getRange(1, idx + 1).setValue(to); have[idx] = to; }
     });
-    // "Godzina wizyty" wstawiamy zaraz za "Data wizyty".
-    const dc = have.indexOf('Data wizyty') + 1;
-    if (dc && have.indexOf('Godzina wizyty') === -1) {
-      sh.insertColumnAfter(dc);
-      sh.getRange(1, dc + 1).setValue('Godzina wizyty');
-      have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    // Brakujące kolumny kancelarii wstawiamy zaraz za poprzednią
+    // (np. "Godzina wizyty" za "Data wizyty", "Ksiądz" za "Godzina wizyty").
+    for (let i = 1; i < ADMIN_COLS.length; i++) {
+      const prev = have.indexOf(ADMIN_COLS[i - 1]) + 1;
+      if (prev && have.indexOf(ADMIN_COLS[i]) === -1) {
+        sh.insertColumnAfter(prev);
+        sh.getRange(1, prev + 1).setValue(ADMIN_COLS[i]);
+        have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      }
     }
     // Pozostałe brakujące kolumny dopisujemy na końcu.
     const add = HEADERS.filter(h => have.indexOf(h) === -1);
@@ -174,6 +195,7 @@ function prepare_(sh) {
     if (h === 'Ulica' || h === 'Zgłaszający' || h === 'Sąsiad' || h === 'E-mail') w = 170;
     if (/^Nr /.test(h) || h === 'Dłuższe spotkanie') w = 90;
     if (h === 'Data wizyty' || h === 'Godzina wizyty') w = 115;
+    if (h === 'Ksiądz') w = 190;
     if (h === 'Pora odwiedzin' || h === 'Czyje mieszkanie') w = 150;
     sh.setColumnWidth(col, w);
     if (/^Uwagi/.test(h)) sh.getRange(2, col, rows, 1).setWrap(true);
@@ -188,6 +210,14 @@ function prepare_(sh) {
       // Na stronę idzie godzina dokładnie tak, jak widać w komórce.
       sh.getRange(2, col, rows, 1).clearDataValidations().setNumberFormat('hh:mm');
       sh.getRange(1, col).setNote('Np. 16:00 (albo przedział 16:00–18:00).');
+    }
+    if (h === 'Ksiądz') {
+      // Lista rozwijana z kolumny "Księża" w "Ustawieniach" (nowe nazwiska pojawiają się same).
+      const set = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SETTINGS);
+      const r = sh.getRange(2, col, rows, 1).setNumberFormat('@');
+      if (set) r.setDataValidation(SpreadsheetApp.newDataValidation()
+        .requireValueInRange(set.getRange(2, PRIESTS_COL, PRIESTS_MAX, 1), true).setAllowInvalid(false).build());
+      sh.getRange(1, col).setNote('Wybierz z listy. Listę księży zmienia się w zakładce „Ustawienia”, kolumna „Księża”.');
     }
   });
   const dataCol = actual.indexOf('Data zgłoszenia') + 1;
@@ -369,7 +399,12 @@ function visit_(r, d, cell) {
     const data = date_(cell(r, 'Data wizyty'));
     // "Zaplanowane" bez daty: dla mieszkańca to wciąż "termin nieustalony".
     if (!data) return { wynik: 'brak' };
-    return { wynik: 'zaplanowane', data: day_(data), godzina: String(cell(d, 'Godzina wizyty')).trim().slice(0, 40) };
+    return {
+      wynik: 'zaplanowane',
+      data: day_(data),
+      godzina: String(cell(d, 'Godzina wizyty')).trim().slice(0, 40),
+      ksiadz: String(cell(d, 'Ksiądz')).trim().slice(0, 80)
+    };
   }
   if (status === 'Po wizycie') return { wynik: 'po' };
   return { wynik: 'brak' };
