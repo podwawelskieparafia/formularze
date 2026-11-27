@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<title>Wizyta duszpasterska – zgłoszenie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css?v=17">
+</head>
+<body>
+
+<div class="info">
+  <!-- Rok i termin podstawia app.js z zakładki „Ustawienia” w arkuszu. -->
+  <p class="info-title">Wizyta duszpasterska <span data-rok></span></p>
+  <p>Coroczna wizyta duszpasterska w&nbsp;mieszkaniach wiernych, zwana potocznie kolędą, odbywa się w&nbsp;czasie Bożego Narodzenia. Służy:</p>
+  <ul>
+    <li>wspólnej modlitwie z&nbsp;domownikami,</li>
+    <li>poświęceniu mieszkania i&nbsp;błogosławieństwu domowników,</li>
+    <li>aktualizacji danych w&nbsp;kartotece parafialnej,</li>
+    <li>rozmowie na tematy parafialne i&nbsp;wspólnotowe,</li>
+    <li>rozmowie z&nbsp;duszpasterzem w&nbsp;kwestiach osobistych.</li>
+  </ul>
+  <p class="info-deadline"><span data-termin-box hidden>Zgłoszenia przyjmujemy do <strong data-termin></strong> </span>Prosimy zgłaszać tylko mieszkania, w&nbsp;których mieszkają katolicy.</p>
+</div>
+
+<form class="card" data-form="koleda" novalidate>
+  <div class="hp" aria-hidden="true">
+    <label>Nie wypełniaj tego pola <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  </div>
+
+  <fieldset class="field">
+    <legend>Czyje mieszkanie zgłaszasz?</legend>
+    <div class="choices">
+      <label class="choice">
+        <input type="radio" name="typ" value="Moje mieszkanie" data-key="moje" checked>
+        <span><strong>Moje mieszkanie</strong><small>Zapraszam księdza do siebie</small></span>
+      </label>
+      <label class="choice">
+        <input type="radio" name="typ" value="Mieszkanie sąsiada" data-key="sasiad">
+        <span><strong>Mieszkanie sąsiada</strong><small>Sąsiad nie wychodzi z&nbsp;domu lub mieszka tu od niedawna, a&nbsp;chciałby przyjąć księdza</small></span>
+      </label>
+    </div>
+  </fieldset>
+
+  <div class="section">
+    <p class="section-title">Zgłaszający</p>
+    <div class="field" data-req="text" data-msg="Podaj imię i nazwisko.">
+      <label for="w-imie">Imię i nazwisko <span class="req">*</span></label>
+      <input id="w-imie" type="text" name="imie" maxlength="100" autocomplete="name">
+      <div class="err"></div>
+    </div>
+    <div class="field" data-req="tel">
+      <label for="w-tel">Telefon kontaktowy <span class="req">*</span></label>
+      <input id="w-tel" type="tel" name="telefon" maxlength="30" autocomplete="tel" inputmode="tel">
+      <div class="hint">Najlepiej komórkowy, a&nbsp;jeśli go nie masz, stacjonarny.</div>
+      <div class="err"></div>
+    </div>
+    <div class="field" data-req="email-opt">
+      <label for="w-mail">E-mail <span class="opt">(opcjonalnie)</span></label>
+      <input id="w-mail" type="email" name="email" maxlength="120" autocomplete="email">
+      <div class="err"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Adres wizyty</p>
+    <p class="section-note">Na liście są ulice należące do naszej parafii.</p>
+    <div class="addr">
+      <div class="field addr-street" data-req="text" data-msg="Wybierz ulicę.">
+        <label for="w-ulica">Ulica <span class="req">*</span></label>
+        <select id="w-ulica" name="ulica">
+          <option value="">Wybierz ulicę…</option>
+          <option>Komandosów</option>
+          <option>Ludwinowska</option>
+          <option>Rozdroże</option>
+          <option value="Słomiana" data-odd>Słomiana (numery nieparzyste)</option>
+          <option>Swoboda</option>
+          <option>Turecka</option>
+          <option>Zatorska</option>
+        </select>
+        <div class="err"></div>
+      </div>
+      <div class="field" data-req="house" data-msg="Podaj numer domu.">
+        <label for="w-dom">Nr domu <span class="req">*</span></label>
+        <input id="w-dom" type="text" name="nr_domu" maxlength="10">
+        <div class="err"></div>
+      </div>
+      <div class="field">
+        <label for="w-lokal">Nr mieszkania</label>
+        <input id="w-lokal" type="text" name="nr_mieszkania" maxlength="10">
+      </div>
+    </div>
+    <div data-only="sasiad" hidden>
+      <div class="field">
+        <label for="w-sasiad">Imię i nazwisko sąsiada <span class="opt">(opcjonalnie)</span></label>
+        <input id="w-sasiad" type="text" name="sasiad" maxlength="100">
+      </div>
+      <div class="field" data-req="tel-opt">
+        <label for="w-sasiad-tel">Telefon sąsiada <span class="opt">(opcjonalnie)</span></label>
+        <input id="w-sasiad-tel" type="tel" name="sasiad_tel" maxlength="30" inputmode="tel">
+        <div class="err"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Wizyta</p>
+    <fieldset class="field" data-req="radio" data-msg="Wybierz najlepszą porę odwiedzin.">
+      <legend>Najlepsza pora odwiedzin <span class="req">*</span></legend>
+      <div class="choices three">
+        <label class="choice">
+          <input type="radio" name="pora" value="Przed południem (9–14)">
+          <span><strong>Przed południem</strong><small>9.00–14.00</small></span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="pora" value="Po południu (16–21)">
+          <span><strong>Po południu</strong><small>16.00–21.00</small></span>
+        </label>
+        <label class="choice">
+          <input type="radio" name="pora" value="Obojętnie">
+          <span><strong>Obojętnie</strong><small>Każda pora mi odpowiada</small></span>
+        </label>
+      </div>
+      <div class="err"></div>
+    </fieldset>
+    <fieldset class="field">
+      <legend>Długość wizyty</legend>
+      <div class="choices one">
+      <label class="choice">
+        <input type="checkbox" name="dluzsze">
+        <span><strong>Chcę dłuższego spotkania (ok. 30&nbsp;minut)</strong><small>Kapłan poświęci ok. 30&nbsp;minut na indywidualne spotkanie i&nbsp;dłuższą rozmowę. Prosimy wtedy przygotować ciepłą herbatę dla ministrantów w&nbsp;osobnym pomieszczeniu. Standardowa wizyta trwa 10–15&nbsp;minut.</small></span>
+      </label>
+      </div>
+    </fieldset>
+    <div class="field">
+      <label for="w-uwagi">Uwagi ogólne do parafii <span class="opt">(opcjonalnie)</span></label>
+      <textarea id="w-uwagi" name="uwagi" maxlength="2000"></textarea>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-title">Zgoda</p>
+    <div class="consents">
+      <div class="field" data-req="consent">
+        <label class="check">
+          <input type="checkbox" name="zgoda_rodo">
+          <span>Wyrażam zgodę na przetwarzanie podanych danych przez Parafię Matki Bożej Fatimskiej w&nbsp;Krakowie w&nbsp;celu przygotowania i&nbsp;przeprowadzenia wizyty duszpasterskiej. <span class="req">*</span></span>
+        </label>
+        <div class="err"></div>
+      </div>
+    </div>
+    <p class="privacy">Administratorem danych jest Parafia Matki Bożej Fatimskiej na os.&nbsp;Podwawelskim w&nbsp;Krakowie, ul.&nbsp;Komandosów&nbsp;18. Dane posłużą wyłącznie do zaplanowania wizyty duszpasterskiej.</p>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="primary">Zgłoś wizytę</button>
+    <span class="form-msg" role="alert"></span>
+  </div>
+</form>
+
+<div class="card closed" data-closed hidden>
+  <h2>Zapisy zakończone</h2>
+  <p>Zgłoszenia na wizytę duszpasterską <span data-rok></span> nie są już przyjmowane. W&nbsp;razie pytań prosimy o&nbsp;kontakt z&nbsp;kancelarią parafialną: tel. (12)&nbsp;266&nbsp;62&nbsp;82, wtorek i&nbsp;czwartek 16.00–17.30, środa i&nbsp;sobota 9.00–10.00.</p>
+</div>
+
+<div class="card done" tabindex="-1" hidden>
+  <div class="done-icon" aria-hidden="true">✓</div>
+  <h2>Dziękujemy! Zgłoszenie zostało przyjęte.</h2>
+  <p>W&nbsp;razie pytań zadzwonimy na podany numer. Kancelaria parafialna: tel. (12)&nbsp;266&nbsp;62&nbsp;82, wtorek i&nbsp;czwartek 16.00–17.30, środa i&nbsp;sobota 9.00–10.00.</p>
+  <button type="button" class="ghost" data-again>Zgłoś kolejne mieszkanie</button>
+</div>
+
+<script src="app.js?v=17"></script>
+</body>
+</html>

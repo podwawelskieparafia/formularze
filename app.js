@@ -3,7 +3,10 @@
 
   // ===== KONFIGURACJA =====
   // Adres aplikacji internetowej Google Apps Script (kończy się na /exec).
+  // Formularze Zespołu Charytatywnego („Chcę pomóc”, „Szukam pomocy”):
   var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQnUtSA23rEhKbNgvlfnlBWYWvwjS6bMwVsO6O4FVpeqNTVxMkUMAGH14kWY5hqvay/exec";
+  // Wizyta duszpasterska (kolęda): osobny arkusz i osobny skrypt (apps-script/Koleda.gs).
+  var KOLEDA_URL = "https://script.google.com/macros/s/AKfycbxbXBmHd4u0hBwesS0JlLwnqRpZdhCYyJYuSQ042EM_8SXRYGP7ezel9hBkd3wf5-Dldw/exec";
 
   // Kategorie pomocy (wspólne dla obu formularzy).
   var CATEGORIES = [
@@ -205,14 +208,50 @@
     };
   }
 
+  // ===== Formularz „Wizyta duszpasterska”: rok i termin z arkusza (zakładka „Ustawienia”) =====
+  // Po zmianie roku w arkuszu strona sama pokazuje nowy rok; po terminie zamiast formularza
+  // jest informacja „Zapisy zakończone”. Gdy ustawień nie da się pobrać, formularz działa
+  // normalnie (serwer i tak sprawdza termin).
+  function initSeason(form, url) {
+    var closed = document.querySelector("[data-closed]");
+    if (!closed || !url) return null;
+    var dateFmt = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric" });
+    function close() {
+      var box = document.querySelector("[data-termin-box]");
+      if (box) box.hidden = true;   // „przyjmujemy do …” już nieaktualne
+      form.hidden = true;
+      closed.hidden = false;
+      postHeight();
+    }
+    fetch(url + "?action=ustawienia", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (s) {
+        if (!s || !s.ok) return;
+        document.querySelectorAll("[data-rok]").forEach(function (el) { el.textContent = s.rok || ""; });
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.termin || "");
+        var box = document.querySelector("[data-termin-box]");
+        if (m && box && s.otwarte) {
+          box.querySelector("[data-termin]").textContent =
+            (dateFmt.format(new Date(+m[1], +m[2] - 1, +m[3])) + " r.").replace(/ /g, "\u00a0");
+          box.hidden = false;
+        }
+        if (!s.otwarte) close();
+        postHeight();
+      })
+      .catch(function () {});
+    return { close: close };
+  }
+
   function initForm(form) {
     var started = Date.now();
     var kind = form.getAttribute("data-form");
+    var url = kind === "koleda" ? KOLEDA_URL : SCRIPT_URL;
     var submitBtn = form.querySelector('button[type="submit"]');
     var submitLabel = submitBtn.textContent;
     var msg = form.querySelector(".form-msg");
     var done = document.querySelector(".done");
     var requests = initRequests(form);
+    var season = initSeason(form, url);
 
     // Pokazywanie pól zależnie od wybranego typu zgłoszenia
     function applyTyp() {
@@ -247,7 +286,7 @@
     function check(field) {
       var rule = field.getAttribute("data-req");
       var custom = field.getAttribute("data-msg");
-      var inputs = field.querySelectorAll("input, textarea");
+      var inputs = field.querySelectorAll("input, textarea, select");
       if (rule === "text") {
         return inputs[0].value.trim() ? "" : (custom || "To pole jest wymagane.");
       }
@@ -259,6 +298,25 @@
       }
       if (rule === "consent") {
         return inputs[0].checked ? "" : (custom || "Ta zgoda jest wymagana, abyśmy mogli przyjąć zgłoszenie.");
+      }
+      // Numer domu; na ulicy oznaczonej data-odd (Słomiana) tylko numery nieparzyste.
+      if (rule === "house") {
+        var nr = inputs[0].value.trim();
+        if (!nr) return custom || "Podaj numer domu.";
+        var street = form.querySelector('select[name="ulica"] option:checked');
+        if (street && street.hasAttribute("data-odd") && parseInt(nr, 10) % 2 !== 1) {
+          return "Tylko numery nieparzyste.";
+        }
+        return "";
+      }
+      if (rule === "email-opt") {
+        var m = inputs[0].value.trim();
+        return !m || EMAIL_RE.test(m) ? "" : "Sprawdź adres e-mail.";
+      }
+      if (rule === "tel" || rule === "tel-opt") {
+        var v = inputs[0].value.trim();
+        if (!v) return rule === "tel" ? (custom || "Podaj numer telefonu.") : "";
+        return phoneOk(v) ? "" : "Sprawdź numer telefonu.";
       }
       if (rule === "contact" || rule === "contact-opt") {
         var tel = field.querySelector('input[type="tel"]').value.trim();
@@ -279,7 +337,7 @@
         if (text && !first) first = field;
       });
       if (first) {
-        var focusable = first.querySelector("input, textarea");
+        var focusable = first.querySelector("input, textarea, select");
         if (focusable) focusable.focus({ preventScroll: true });
         first.scrollIntoView({ behavior: "smooth", block: "center" });
         postHeight();
@@ -292,9 +350,11 @@
       var field = e.target.closest("[data-req]");
       if (field && field.classList.contains("has-err") && !check(field)) clearErr(field);
     });
-    form.addEventListener("change", function (e) {
-      var field = e.target.closest("[data-req]");
-      if (field && field.classList.contains("has-err") && !check(field)) clearErr(field);
+    // Zmiana wyboru może naprawić też inne pole (np. inna ulica -> numer domu już pasuje).
+    form.addEventListener("change", function () {
+      form.querySelectorAll("[data-req].has-err").forEach(function (field) {
+        if (!check(field)) clearErr(field);
+      });
     });
 
     function collect() {
@@ -303,7 +363,7 @@
       data.set("elapsed", String(Date.now() - started));
       data.set("website", form.querySelector('[name="website"]').value);
       var cats = [];
-      form.querySelectorAll("input[name], textarea[name]").forEach(function (el) {
+      form.querySelectorAll("input[name], textarea[name], select[name]").forEach(function (el) {
         if (el.name === "website" || !active(el)) return;
         if (el.type === "checkbox") {
           if (el.name === "kategorie") { if (el.checked) cats.push(el.value); }
@@ -324,6 +384,7 @@
         case "too_fast": return "Formularz został wysłany zbyt szybko. Odczekaj chwilę i spróbuj ponownie.";
         case "rate_limited": return "Otrzymaliśmy teraz bardzo dużo zgłoszeń. Spróbuj ponownie za godzinę.";
         case "invalid": return "Uzupełnij wymagane pola i spróbuj ponownie.";
+        case "closed": return "Zapisy zostały już zakończone.";
         case "taken": return "Ktoś przed chwilą zgłosił się do tej prośby. Lista została odświeżona: wybierz inną prośbę albo wyślij ogólną ofertę pomocy.";
         default: return "Coś poszło nie tak. Spróbuj ponownie za chwilę.";
       }
@@ -333,14 +394,14 @@
       e.preventDefault();
       msg.textContent = "";
       if (!validate()) return;
-      if (!SCRIPT_URL) {
+      if (!url) {
         msg.textContent = "Formularz nie jest jeszcze podłączony. Spróbuj ponownie później.";
         return;
       }
       submitBtn.disabled = true;
       submitBtn.textContent = "Wysyłanie…";
       var picked = requests ? requests.selected() : "";
-      fetch(SCRIPT_URL, { method: "POST", body: collect() })
+      fetch(url, { method: "POST", body: collect() })
         .then(function (r) { return r.json(); })
         .then(function (res) {
           if (res && res.ok) {
@@ -355,6 +416,7 @@
           } else {
             msg.textContent = errorText(res && res.error);
             if (res && res.error === "taken" && requests) requests.taken();
+            if (res && res.error === "closed" && season) season.close();
           }
         })
         .catch(function () {
