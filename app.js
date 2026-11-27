@@ -266,8 +266,9 @@
 
     var text = el("p", "visit-text");
     function add(t, bold) { text.append(bold ? el("strong", null, t) : document.createTextNode(t)); }
-    if (who) { add(who.charAt(0).toUpperCase() + who.slice(1), true); add(" odwiedzi Państwa "); }
-    else add("Kapłan odwiedzi Państwa ");
+    if (who) { add(who.charAt(0).toUpperCase() + who.slice(1), true); add(" odwiedzi Państwa"); }
+    else add("Kapłan odwiedzi Państwa");
+    text.append(document.createElement("br"));   // dzień i godzina w nowym wierszu
     add(nb(WEEKDAY_IN[d.getDay()]) + ", " + nb(dayFmt.format(d)) + " r.", true);
     var range = /^(\d{1,2}[:.]\d{2})\s*[–—-]\s*(\d{1,2}[:.]\d{2})$/.exec(g);
     if (range) { add(", między "); add("godz. " + range[1], true); add(" a "); add(range[2], true); add("."); }
