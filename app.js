@@ -218,7 +218,6 @@
   function initTabs() {
     var buttons = document.querySelectorAll("[data-tab]");
     if (!buttons.length) return null;
-    var touched = false;
     function show(name) {
       buttons.forEach(function (b) {
         b.setAttribute("aria-selected", b.getAttribute("data-tab") === name ? "true" : "false");
@@ -229,10 +228,10 @@
       postHeight();
     }
     buttons.forEach(function (b) {
-      b.addEventListener("click", function () { touched = true; show(b.getAttribute("data-tab")); });
+      b.addEventListener("click", function () { show(b.getAttribute("data-tab")); });
     });
     show(location.hash === "#sprawdz" ? "sprawdz" : buttons[0].getAttribute("data-tab"));
-    return { show: show, touched: function () { return touched; } };
+    return { show: show, bar: buttons[0].closest('[role="tablist"]') };
   }
 
   // ===== „Sprawdź termin”: wynik wyszukiwania zgłoszenia =====
@@ -308,18 +307,30 @@
   }
 
   // ===== Formularz „Wizyta duszpasterska”: rok i termin z arkusza (zakładka „Ustawienia”) =====
-  // Po zmianie roku w arkuszu strona sama pokazuje nowy rok; po terminie zamiast formularza
-  // jest informacja „Zapisy zakończone”. Gdy ustawień nie da się pobrać, formularz działa
-  // normalnie (serwer i tak sprawdza termin).
+  // Po zmianie roku w arkuszu strona sama pokazuje nowy rok. Po terminie zgłoszeń znikają
+  // zakładki i formularz: zostaje tylko „Sprawdź termin” z informacją, że zapisy są zakończone.
+  // Strona jest pokazywana dopiero po odpowiedzi serwera (najwyżej po 8 s), żeby formularz
+  // nie mignął. Gdy ustawień nie da się pobrać, formularz działa normalnie (serwer i tak
+  // sprawdza termin).
   function initSeason(form, url) {
-    var closed = document.querySelector("[data-closed]");
-    if (!closed || !url) return null;
+    var note = document.querySelector("[data-closed]");
+    var ready = document.querySelector("[data-ready]");
+    var wait = document.querySelector("[data-wait]");
+    function reveal() {
+      if (ready) ready.hidden = false;
+      if (wait) wait.hidden = true;
+      postHeight();
+    }
+    if (!note || !url) { reveal(); return null; }
+    var timer = setTimeout(reveal, 8000);
     var dateFmt = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric" });
     function close() {
-      var box = document.querySelector("[data-termin-box]");
-      if (box) box.hidden = true;   // „przyjmujemy do …” już nieaktualne
       form.hidden = true;
-      closed.hidden = false;
+      note.hidden = false;
+      if (tabs) {
+        if (tabs.bar) tabs.bar.hidden = true;
+        tabs.show("sprawdz");
+      }
       postHeight();
     }
     fetch(url + "?action=ustawienia", { cache: "no-store" })
@@ -334,14 +345,13 @@
             (dateFmt.format(new Date(+m[1], +m[2] - 1, +m[3])) + " r.").replace(/ /g, "\u00a0");
           box.hidden = false;
         }
-        if (!s.otwarte) {
-          close();
-          // Po terminie zgłoszeń ludzie przychodzą głównie sprawdzić termin wizyty.
-          if (tabs && !tabs.touched()) tabs.show("sprawdz");
-        }
-        postHeight();
+        if (!s.otwarte) close();
       })
-      .catch(function () {});
+      .catch(function () {})
+      .then(function () {
+        clearTimeout(timer);
+        reveal();
+      });
     return { close: close };
   }
 

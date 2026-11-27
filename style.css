@@ -177,7 +177,7 @@ button:disabled { opacity: .6; cursor: progress; }
 .form-msg:empty { display: none; }
 .privacy { color: var(--muted); font-size: .84rem; margin: 16px 0 0; }
 
-.done, .closed { text-align: center; padding: 40px 20px; border: 1px solid var(--border); }
+.done { text-align: center; padding: 40px 20px; border: 1px solid var(--border); }
 .done:focus { outline: none; }
 .done-icon {
   width: 52px; height: 52px; margin: 0 auto 14px;
@@ -185,12 +185,11 @@ button:disabled { opacity: .6; cursor: progress; }
   display: grid; place-items: center; font-size: 24px;
 }
 /* Jak wyróżnione pozycje menu na podwawelskie.pl (np. „Grupy duszpasterskie”) */
-.done h2, .closed h2 {
+.done h2 {
   margin: 0 0 8px; color: var(--gold-dark);
   font-size: 17px; font-weight: 700; line-height: 23px; letter-spacing: normal; text-transform: uppercase;
 }
 .done p { margin: 0 0 22px; color: var(--muted); }
-.closed p { margin: 0; color: var(--muted); }
 
 /* Przełącznik między formularzami: przenosi całą stronę (target="_top") na odpowiednią podstronę podwawelskie.pl */
 .switch { display: grid; grid-template-columns: 1fr 1fr; margin: 0 0 14px; border: 1px solid var(--gold); }
@@ -341,3 +340,25 @@ button:disabled { opacity: .6; cursor: progress; }
   .lookup-result.is-planned { grid-template-columns: 1fr; }
 }
 .lookup-result.is-missing { background: var(--notice); border-color: var(--gold); border-left-color: var(--gold); }
+
+/* Po terminie zgłoszeń: informacja nad „Sprawdź termin” */
+.closed-note {
+  margin: 0 0 26px; padding: 16px 20px;
+  background: var(--notice); border-left: 4px solid var(--gold);
+  color: var(--heading); font-size: .92rem; line-height: 1.55;
+}
+.closed-note p { margin: 0 0 12px; }
+.closed-note .closed-title { margin-bottom: 6px; font-size: 1.05rem; font-weight: 700; }
+
+/* Kancelaria: telefon i godziny otwarcia (po zgłoszeniu i po terminie zgłoszeń) */
+.office {
+  display: inline-grid; gap: 4px; text-align: left;
+  padding: 12px 18px; background: var(--bg); border: 1px solid var(--gold);
+}
+.office .office-title { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-dark); }
+.office-tel { font-size: 1.1rem; font-weight: 700; color: var(--heading); text-decoration: none; }
+.office-tel:hover { color: var(--gold-dark); text-decoration: underline; text-underline-offset: 3px; }
+.office-hours { display: grid; grid-template-columns: auto auto; gap: 2px 20px; margin: 4px 0 0; font-size: .9rem; color: var(--text); }
+.office-hours dt, .office-hours dd { margin: 0; }
+.office-hours dd { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.done .office { display: grid; width: fit-content; margin: 0 auto 24px; }

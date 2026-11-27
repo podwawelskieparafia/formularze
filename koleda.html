@@ -8,10 +8,15 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
 
+<!-- Strona czeka na rok i termin z arkusza. Po terminie zgłoszeń zostaje tylko „Sprawdź termin”
+     (bez zakładek i bez formularza), więc formularz nie mignie przed zniknięciem. -->
+<p class="requests-status" data-wait>Wczytywanie…</p>
+
+<div data-ready hidden>
 <!-- Dwie zakładki na jednej stronie; koleda.html#sprawdz otwiera od razu „Sprawdź termin”. -->
 <div class="switch" role="tablist" aria-label="Wizyta duszpasterska">
   <button type="button" role="tab" data-tab="zglos">Zgłoś wizytę</button>
@@ -168,20 +173,35 @@
   </div>
 </form>
 
-<div class="card closed" data-closed hidden>
-  <h2>Zapisy zakończone</h2>
-  <p>Zgłoszenia na wizytę duszpasterską <span data-rok></span> nie są już przyjmowane. W&nbsp;razie pytań prosimy o&nbsp;kontakt z&nbsp;kancelarią parafialną: tel. (12)&nbsp;266&nbsp;62&nbsp;82, wtorek i&nbsp;czwartek 16.00–17.30, środa i&nbsp;sobota 9.00–10.00.</p>
-</div>
-
 <div class="card done" tabindex="-1" hidden>
   <div class="done-icon" aria-hidden="true">✓</div>
   <h2>Dziękujemy! Zgłoszenie zostało przyjęte.</h2>
-  <p>Gdy kancelaria ustali termin, zobaczysz go w&nbsp;zakładce „Sprawdź termin”. W&nbsp;razie pytań zadzwonimy na podany numer. Kancelaria parafialna: tel. (12)&nbsp;266&nbsp;62&nbsp;82, wtorek i&nbsp;czwartek 16.00–17.30, środa i&nbsp;sobota 9.00–10.00.</p>
+  <p>Gdy kancelaria ustali termin wizyty, zobaczysz go w&nbsp;zakładce „Sprawdź termin”.<br>W&nbsp;razie pytań zadzwonimy na podany numer.</p>
+  <div class="office">
+    <p class="office-title">Kancelaria parafialna</p>
+    <a class="office-tel" href="tel:+48122666282">tel. (12)&nbsp;266&nbsp;62&nbsp;82</a>
+    <dl class="office-hours">
+      <dt>wtorek i&nbsp;czwartek</dt><dd>16.00–17.30</dd>
+      <dt>środa i&nbsp;sobota</dt><dd>9.00–10.00</dd>
+    </dl>
+  </div>
   <button type="button" class="ghost" data-again>Zgłoś kolejne mieszkanie</button>
 </div>
 </div>
 
 <div data-panel="sprawdz" hidden>
+<div class="closed-note" data-closed hidden>
+  <p class="closed-title">Zapisy na wizytę duszpasterską <span data-rok></span> są już zakończone</p>
+  <p>Poniżej można sprawdzić termin wizyty. Jeśli nie zdążyli Państwo zgłosić mieszkania, prosimy o&nbsp;kontakt z&nbsp;kancelarią:</p>
+  <div class="office">
+    <p class="office-title">Kancelaria parafialna</p>
+    <a class="office-tel" href="tel:+48122666282">tel. (12)&nbsp;266&nbsp;62&nbsp;82</a>
+    <dl class="office-hours">
+      <dt>wtorek i&nbsp;czwartek</dt><dd>16.00–17.30</dd>
+      <dt>środa i&nbsp;sobota</dt><dd>9.00–10.00</dd>
+    </dl>
+  </div>
+</div>
 <form class="card" data-form="sprawdz" novalidate>
   <div class="hp" aria-hidden="true">
     <label>Nie wypełniaj tego pola <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
@@ -214,7 +234,8 @@
   <div class="lookup-result" data-result aria-live="polite" hidden></div>
 </form>
 </div>
+</div>
 
-<script src="app.js?v=20"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>
