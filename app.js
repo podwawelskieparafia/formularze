@@ -31,6 +31,11 @@
   }
   if ("ResizeObserver" in window) new ResizeObserver(postHeight).observe(document.body);
   window.addEventListener("load", postHeight);
+  // Strona-rodzic może poprosić o wysokość (np. z atrybutu onload ramki, który
+  // zaczyna nasłuchiwać dopiero po załadowaniu formularza).
+  window.addEventListener("message", function (e) {
+    if (e.source === window.parent && e.data && e.data.type === "iframe-height-request") postHeight();
+  });
 
   // Kategorie jako pola wyboru
   document.querySelectorAll("[data-categories]").forEach(function (box) {
