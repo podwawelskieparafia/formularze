@@ -176,6 +176,8 @@ function setup() {
   // Wiersze zapisane przed tą wersją dostają ID (lista na stronie, linki między zakładkami).
   ensureIds_(sheet_(FORMS.szukam));
   ensureIds_(sheet_(FORMS.chce));
+  repairLinks_(sheet_(FORMS.szukam));
+  repairLinks_(sheet_(FORMS.chce));
   CacheService.getScriptCache().remove(LIST_KEY);
 }
 
@@ -320,20 +322,24 @@ function handlePost_(p) {
     // Rezerwacja prośby. Jesteśmy pod blokadą, więc dwie osoby nie zarezerwują tej samej:
     // druga zobaczy już odznaczone "Opublikować" i dostanie "taken".
     let claim = null;
+    let link = '';
     if (claimId) {
       claim = findOpenRequest_(claimId);
       if (!claim) return json_({ ok: false, error: 'taken' });
       const rodzaj = String(claim.r[claim.t.col['Rodzaj pomocy']] || '');
       const pub = String(claim.r[claim.t.col['Opis publiczny']] || '').trim();
       values['Rodzaj pomocy'] = safeText_(rodzaj);
-      values['Wybrana prośba'] = jump_(claim.sh, claim.t.col['ID'] + 1, claimId, claimId + ': ' + (pub || rodzaj));
+      link = jump_(claim.sh, claim.t.col['ID'] + 1, claimId, claimId + ': ' + (pub || rodzaj));
     }
 
     const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-    const row = headers.map(h => (h in values ? values[h] : ''));
+    // ID z apostrofem: zawsze tekst (inaczej np. "40711834" Arkusze zamieniłyby na liczbę).
+    const row = headers.map(h => (h in values ? (h === 'ID' ? "'" + values[h] : values[h]) : ''));
     const target = nextRow_(sh, row.length);
     if (target > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 1);
     sh.getRange(target, 1, 1, row.length).setValues([row]);
+    const linkCol = headers.indexOf('Wybrana prośba') + 1;
+    if (link && linkCol) setFormula_(sh.getRange(target, linkCol), link);
 
     if (claim) markClaimed_(claim, values, tel, mail, sh, headers.indexOf('ID') + 1);
   } finally {
@@ -366,7 +372,11 @@ function markClaimed_(c, values, tel, mail, volSheet, volIdCol) {
   set('Opublikować', false);
   set('Status', CLAIMED);
   const label = prev ? prev + '\n' + line : line;
-  set('Wolontariusz', volIdCol ? jump_(volSheet, volIdCol, values['ID'], label) : safeText_(label));
+  if (volIdCol && col['Wolontariusz'] !== undefined) {
+    setFormula_(c.sh.getRange(c.row, col['Wolontariusz'] + 1), jump_(volSheet, volIdCol, values['ID'], label));
+  } else {
+    set('Wolontariusz', safeText_(label));
+  }
   CacheService.getScriptCache().remove(LIST_KEY);
 }
 
@@ -385,15 +395,38 @@ function nextRow_(sh, ncols) {
   return last + 1;
 }
 
-// Nadaje ID każdej prośbie z treścią, która go jeszcze nie ma.
+// Nadaje ID każdemu wierszowi z treścią, który go jeszcze nie ma. ID zapisujemy jako tekst
+// (apostrof), a ID zamienione wcześniej przez Arkusze na liczbę zamieniamy z powrotem na tekst.
 function ensureIds_(sh) {
   if (!sh || sh.getLastRow() < 2) return;
   const t = table_(sh);
   const c = t.col['ID'];
   if (c === undefined) return;
   t.rows.forEach(function (r, i) {
-    if (r[c] !== '' && r[c] !== null) return;
-    if (r.some((v, j) => j !== c && !isEmpty_(v))) sh.getRange(i + 2, c + 1).setValue(newId_());
+    const v = r[c];
+    if (typeof v === 'number') {
+      if (ID_RE.test(String(v))) sh.getRange(i + 2, c + 1).setValue("'" + String(v));
+      return;
+    }
+    if (v !== '' && v !== null) return;
+    if (r.some((x, j) => j !== c && !isEmpty_(x))) sh.getRange(i + 2, c + 1).setValue("'" + newId_());
+  });
+}
+
+// Linki zapisane przez poprzednią wersję z błędem składni (#ERROR!) wpisujemy ponownie.
+function repairLinks_(sh) {
+  if (!sh || sh.getLastRow() < 2) return;
+  const t = table_(sh);
+  MATCH_COLS.forEach(function (h) {
+    const c = t.col[h];
+    if (c === undefined) return;
+    const rng = sh.getRange(2, c + 1, t.rows.length, 1);
+    const f = rng.getFormulas(), d = rng.getDisplayValues();
+    for (let i = 0; i < f.length; i++) {
+      if (d[i][0] === '#ERROR!' && f[i][0].indexOf('=IFERROR(HYPERLINK(') === 0) {
+        setFormula_(sh.getRange(i + 2, c + 1), f[i][0]);
+      }
+    }
   });
 }
 
@@ -427,6 +460,25 @@ function lit_(s) {
   return String(s).replace(/\r/g, '').split('\n')
     .map(p => '"' + p.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/"/g, '""') + '"')
     .join('&CHAR(10)&');
+}
+
+// Wpisuje formułę. Przy polskich ustawieniach regionalnych arkusz oczekuje średników
+// zamiast przecinków między argumentami: jeśli wersja z przecinkami daje błąd składni
+// (#ERROR!), wpisujemy wersję ze średnikami.
+function setFormula_(range, f) {
+  range.setFormula(f);
+  SpreadsheetApp.flush();
+  if (range.getDisplayValue() === '#ERROR!') range.setFormula(semicolons_(f));
+}
+
+// Przecinki rozdzielające argumenty -> średniki; przecinki w tekście (w cudzysłowach) zostają.
+function semicolons_(f) {
+  let out = '', inText = false;
+  for (const ch of f) {
+    if (ch === '"') inText = !inText;
+    out += ch === ',' && !inText ? ';' : ch;
+  }
+  return out;
 }
 
 function colLetter_(n) {
