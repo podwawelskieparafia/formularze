@@ -60,8 +60,10 @@ const CLAIMED = 'Pomagający zgłoszony';
 // Poprzednie nazwy; setup zamienia je w arkuszu na obecne.
 const RENAMED_COLS = { 'Wolontariusz': HELPER };
 const RENAMED_STATUSES = { 'Wolontariusz zgłoszony': CLAIMED };
-const STATUSES = ['Nowe', 'W trakcie', CLAIMED, 'Połączono', 'Zamknięte'];
+const STATUSES = ['Nowe', 'W trakcie', CLAIMED, 'Połączono', 'Zamknięte'];   // prośby
+const HELPER_STATUSES = ['Nowe', 'Zatwierdzone', 'Odrzucone'];             // pomagający
 const CLOSED = ['Połączono', 'Zamknięte'];   // prośby z tym statusem nie są pokazywane
+// Kolumny koordynatora (na żółto). "Chcę pomóc" ma tylko Status i Uwagi.
 const ADMIN_COLS = ['Status', 'Opublikować', 'Opis publiczny', 'Uwagi koordynatora'];
 const MATCH_COLS = [HELPER, 'Wybrana prośba'];   // kto do czego się zgłosił (na zielono)
 // Kolumny po zgodach usuniętych z formularzy; setup usuwa je z arkusza.
@@ -84,6 +86,8 @@ const FORMS = {
       ['opis', 'Opis potrzeby', 3000]
     ],
     required: ['typ', 'kategorie', 'opis'],
+    admin: ADMIN_COLS,
+    statuses: STATUSES,
     extra: [HELPER, 'ID']
   },
   chce: {
@@ -96,12 +100,15 @@ const FORMS = {
       ['opis', 'Opis pomocy', 3000]
     ],
     required: ['kategorie', 'opis'],
+    admin: ['Status', 'Uwagi koordynatora'],
+    statuses: HELPER_STATUSES,
+    obsolete: ['Opublikować', 'Opis publiczny'],   // pomagających się nie publikuje
     extra: ['Wybrana prośba', 'ID']
   }
 };
 
 function headers_(cfg) {
-  return ['Data'].concat(cfg.fields.map(f => f[1]), ADMIN_COLS, cfg.extra);
+  return ['Data'].concat(cfg.fields.map(f => f[1]), cfg.admin, cfg.extra);
 }
 
 function sheet_(cfg) {
@@ -139,9 +146,10 @@ function setup() {
         const to = RENAMED_COLS[h];
         if (to && have.indexOf(to) === -1) { sh.getRange(1, idx + 1).setValue(to); have[idx] = to; }
       });
-      // Usuwamy kolumny zgód, których formularze już nie mają (od prawej, żeby numery się nie przesuwały).
+      // Usuwamy kolumny, których ta zakładka już nie ma (od prawej, żeby numery się nie przesuwały).
+      const drop = OBSOLETE_COLS.concat(cfg.obsolete || []);
       for (let c = have.length; c >= 1; c--) {
-        if (OBSOLETE_COLS.indexOf(have[c - 1]) !== -1) sh.deleteColumn(c);
+        if (drop.indexOf(have[c - 1]) !== -1) sh.deleteColumn(c);
       }
       have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
       const add = headers.filter(h => have.indexOf(h) === -1);
@@ -175,10 +183,10 @@ function setup() {
     sh.getRange(2, 1, rows, n).setVerticalAlignment('top');
 
     const statusCol = actual.indexOf('Status') + 1;
-    sh.getRange(2, statusCol, rows, 1).setDataValidation(
-      SpreadsheetApp.newDataValidation().requireValueInList(STATUSES, true).setAllowInvalid(false).build());
+    if (statusCol) sh.getRange(2, statusCol, rows, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(cfg.statuses, true).setAllowInvalid(false).build());
     const pubCol = actual.indexOf('Opublikować') + 1;
-    sh.getRange(2, pubCol, rows, 1).setDataValidation(
+    if (pubCol) sh.getRange(2, pubCol, rows, 1).setDataValidation(
       SpreadsheetApp.newDataValidation().requireCheckbox().build());
   });
 
@@ -325,7 +333,7 @@ function handlePost_(p) {
 
   values['Data'] = new Date();
   values['Status'] = 'Nowe';
-  values['Opublikować'] = false;
+  if (p.form === 'szukam') values['Opublikować'] = false;
   values['ID'] = newId_();   // prośba i pomagający: do listy na stronie i do linków między zakładkami
 
   const lock = LockService.getScriptLock();
