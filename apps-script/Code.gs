@@ -20,11 +20,11 @@
  * wychodzą tylko: ID, data dodania, rodzaj pomocy i "Opis publiczny" wpisany przez
  * koordynatora. Imiona, kontakty i oryginalny opis nigdy nie opuszczają arkusza.
  *
- * Gdy wolontariusz wybierze prośbę w formularzu "Chcę pomóc", skrypt odznacza
- * "Opublikować", ustawia status "Wolontariusz zgłoszony" i wpisuje wolontariusza,
+ * Gdy pomagający wybierze prośbę w formularzu "Chcę pomóc", skrypt odznacza
+ * "Opublikować", ustawia status "Pomagający zgłoszony" i wpisuje pomagającego,
  * więc prośba znika z listy. Żeby wróciła na listę, wystarczy znów zaznaczyć "Opublikować".
  *
- * Kolumny "Wybrana prośba" (u wolontariusza) i "Wolontariusz" (przy prośbie) są
+ * Kolumny "Wybrana prośba" (u pomagającego) i "Pomagający" (przy prośbie) są
  * linkami: kliknięcie przenosi do odpowiedniego wiersza w drugiej zakładce. Wiersz jest
  * szukany po ID, więc linki działają także po sortowaniu i usuwaniu wierszy.
  */
@@ -55,11 +55,15 @@ const OSOBA_WIE = ['', 'Tak', 'Nie', 'Nie wiem'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ID_RE = /^[a-z0-9]{6,12}$/;
 
-const CLAIMED = 'Wolontariusz zgłoszony';
+const HELPER = 'Pomagający';               // kolumna przy prośbie: kto się zgłosił
+const CLAIMED = 'Pomagający zgłoszony';
+// Poprzednie nazwy; setup zamienia je w arkuszu na obecne.
+const RENAMED_COLS = { 'Wolontariusz': HELPER };
+const RENAMED_STATUSES = { 'Wolontariusz zgłoszony': CLAIMED };
 const STATUSES = ['Nowe', 'W trakcie', CLAIMED, 'Połączono', 'Zamknięte'];
 const CLOSED = ['Połączono', 'Zamknięte'];   // prośby z tym statusem nie są pokazywane
 const ADMIN_COLS = ['Status', 'Opublikować', 'Opis publiczny', 'Uwagi koordynatora'];
-const MATCH_COLS = ['Wolontariusz', 'Wybrana prośba'];   // kto do czego się zgłosił (na zielono)
+const MATCH_COLS = [HELPER, 'Wybrana prośba'];   // kto do czego się zgłosił (na zielono)
 // Kolumny po zgodach usuniętych z formularzy; setup usuwa je z arkusza.
 const OBSOLETE_COLS = ['Zgoda na przekazanie kontaktu', 'Zgoda na publikację'];
 
@@ -80,7 +84,7 @@ const FORMS = {
       ['opis', 'Opis potrzeby', 3000]
     ],
     required: ['typ', 'kategorie', 'opis'],
-    extra: ['Wolontariusz', 'ID']
+    extra: [HELPER, 'ID']
   },
   chce: {
     sheet: 'Chcę pomóc',
@@ -130,6 +134,11 @@ function setup() {
     } else {
       // Arkusz z danymi: dopisujemy tylko brakujące kolumny, na końcu.
       let have = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+      // Kolumny o dawnych nazwach dostają obecne (dane w nich zostają).
+      have.forEach(function (h, idx) {
+        const to = RENAMED_COLS[h];
+        if (to && have.indexOf(to) === -1) { sh.getRange(1, idx + 1).setValue(to); have[idx] = to; }
+      });
       // Usuwamy kolumny zgód, których formularze już nie mają (od prawej, żeby numery się nie przesuwały).
       for (let c = have.length; c >= 1; c--) {
         if (OBSOLETE_COLS.indexOf(have[c - 1]) !== -1) sh.deleteColumn(c);
@@ -148,7 +157,7 @@ function setup() {
 
     actual.forEach(function (h, idx) {
       const col = idx + 1;
-      // Kolumny koordynatora na żółto, dopasowanie wolontariusza do prośby na zielono
+      // Kolumny koordynatora na żółto, dopasowanie pomagającego do prośby na zielono
       if (ADMIN_COLS.indexOf(h) !== -1) sh.getRange(1, col).setBackground('#fff2cc');
       if (MATCH_COLS.indexOf(h) !== -1) sh.getRange(1, col).setBackground('#d9ead3');
       let w = 140;
@@ -178,7 +187,20 @@ function setup() {
   ensureIds_(sheet_(FORMS.chce));
   repairLinks_(sheet_(FORMS.szukam));
   repairLinks_(sheet_(FORMS.chce));
+  renameStatuses_(sheet_(FORMS.szukam));
   CacheService.getScriptCache().remove(LIST_KEY);
+}
+
+// Statusy o dawnych nazwach (np. "Wolontariusz zgłoszony") zamieniamy na obecne.
+function renameStatuses_(sh) {
+  if (!sh || sh.getLastRow() < 2) return;
+  const t = table_(sh);
+  const c = t.col['Status'];
+  if (c === undefined) return;
+  t.rows.forEach(function (r, i) {
+    const to = RENAMED_STATUSES[r[c]];
+    if (to) sh.getRange(i + 2, c + 1).setValue(to);
+  });
 }
 
 // Prosty wyzwalacz (działa sam, bez instalowania): po każdej edycji arkusza lista
@@ -273,7 +295,7 @@ function handlePost_(p) {
 
   if (p.zgoda_rodo !== 'Tak') return json_({ ok: false, error: 'invalid' });
 
-  // Wolontariusz wybrał konkretną prośbę z listy (tylko formularz "Chcę pomóc").
+  // Pomagający wybrał konkretną prośbę z listy (tylko formularz "Chcę pomóc").
   const claimId = p.form === 'chce' ? clean_(p.zgloszenie, 20) : '';
   if (claimId && !ID_RE.test(claimId)) return json_({ ok: false, error: 'invalid' });
 
@@ -304,7 +326,7 @@ function handlePost_(p) {
   values['Data'] = new Date();
   values['Status'] = 'Nowe';
   values['Opublikować'] = false;
-  values['ID'] = newId_();   // prośba i wolontariusz: do listy na stronie i do linków między zakładkami
+  values['ID'] = newId_();   // prośba i pomagający: do listy na stronie i do linków między zakładkami
 
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return json_({ ok: false, error: 'busy' });
@@ -360,22 +382,22 @@ function findOpenRequest_(id) {
 }
 
 // Prośba znika z listy: odznaczamy "Opublikować", zmieniamy status i dopisujemy
-// wolontariusza (poprzedni wpis zostaje, gdyby koordynator opublikował prośbę ponownie).
-// Komórka "Wolontariusz" prowadzi do wiersza najnowszego wolontariusza w "Chcę pomóc".
+// pomagającego (poprzedni wpis zostaje, gdyby koordynator opublikował prośbę ponownie).
+// Komórka "Pomagający" prowadzi do wiersza najnowszego pomagającego w "Chcę pomóc".
 function markClaimed_(c, values, tel, mail, volSheet, volIdCol) {
   const col = c.t.col;
   function set(h, v) { if (col[h] !== undefined) c.sh.getRange(c.row, col[h] + 1).setValue(v); }
   const who = [values['Imię / pseudonim'] || '(bez imienia)', tel ? 'tel. ' + tel : '', mail]
     .filter(Boolean).join(', ');
   const line = who + ' (' + Utilities.formatDate(values['Data'], TZ, 'dd.MM.yyyy HH:mm') + ')';
-  const prev = col['Wolontariusz'] !== undefined ? String(c.r[col['Wolontariusz']] || '') : '';
+  const prev = col[HELPER] !== undefined ? String(c.r[col[HELPER]] || '') : '';
   set('Opublikować', false);
   set('Status', CLAIMED);
   const label = prev ? prev + '\n' + line : line;
-  if (volIdCol && col['Wolontariusz'] !== undefined) {
-    setFormula_(c.sh.getRange(c.row, col['Wolontariusz'] + 1), jump_(volSheet, volIdCol, values['ID'], label));
+  if (volIdCol && col[HELPER] !== undefined) {
+    setFormula_(c.sh.getRange(c.row, col[HELPER] + 1), jump_(volSheet, volIdCol, values['ID'], label));
   } else {
-    set('Wolontariusz', safeText_(label));
+    set(HELPER, safeText_(label));
   }
   CacheService.getScriptCache().remove(LIST_KEY);
 }
