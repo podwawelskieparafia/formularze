@@ -11,6 +11,7 @@
   --gold-dark: #79621c;   /* akcent do tekstu i przycisków (lepszy kontrast) */
   --gold-darker: #634f14;
   --gold-soft: #f6f2e7;
+  --notice: #fff6d1;      /* jasnożółte tło: brak próśb na liście */
   --on-gold: #ffffff;
   --danger: #b3261e;
   --ok: #79621c;
@@ -28,6 +29,7 @@
   --gold-dark: #c9b47a;
   --gold-darker: #d8c48c;
   --gold-soft: #2b2718;
+  --notice: #332d12;
   --on-gold: #1b1b1b;
   --danger: #f08a80;
   --ok: #c9b47a;
@@ -46,6 +48,7 @@
     --gold-dark: #c9b47a;
     --gold-darker: #d8c48c;
     --gold-soft: #2b2718;
+  --notice: #332d12;
     --on-gold: #1b1b1b;
     --danger: #f08a80;
     --ok: #c9b47a;
@@ -246,3 +249,9 @@ button:disabled { opacity: .6; cursor: progress; }
   font-size: .9rem; color: var(--heading);
 }
 .picked-note + .actions { margin-top: 16px; }
+.requests-status.is-empty {
+  border: 0; border-left: 4px solid var(--gold);
+  background: var(--notice); color: var(--heading);
+  font-size: .95rem; padding: 14px 18px;
+}
+.requests-status.is-empty strong { font-weight: 700; }

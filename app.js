@@ -75,6 +75,7 @@
     var SHOW = 3;
     var items = [];
     var expanded = false;
+    var loaded = false;
     var dateFmt = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long" });
 
     function fmtDate(s) {
@@ -150,7 +151,8 @@
       });
       more.hidden = has || expanded || items.length <= SHOW;
       unpick.hidden = !has;
-      intro.hidden = has;
+      // Pusta lista: bez podpowiedzi „Wybierz prośbę…”, zostaje tylko żółta informacja.
+      intro.hidden = has || (loaded && !items.length);
       note.hidden = !has;
       form.querySelectorAll("[data-general]").forEach(function (el) { el.hidden = has; });
       postHeight();
@@ -166,6 +168,7 @@
         .then(function (res) {
           if (!res || !res.ok || !Array.isArray(res.items)) throw new Error("bad");
           items = res.items;
+          loaded = true;
           render();
         })
         .catch(function () {
