@@ -23,6 +23,10 @@
  * Gdy wolontariusz wybierze prośbę w formularzu "Chcę pomóc", skrypt odznacza
  * "Opublikować", ustawia status "Wolontariusz zgłoszony" i wpisuje wolontariusza,
  * więc prośba znika z listy. Żeby wróciła na listę, wystarczy znów zaznaczyć "Opublikować".
+ *
+ * Kolumny "Wybrana prośba" (u wolontariusza) i "Wolontariusz" (przy prośbie) są
+ * linkami: kliknięcie przenosi do odpowiedniego wiersza w drugiej zakładce. Wiersz jest
+ * szukany po ID, więc linki działają także po sortowaniu i usuwaniu wierszy.
  */
 
 const MIN_FILL_MS = 3000;   // formularz wysłany szybciej niż 3 s po otwarciu = bot
@@ -90,7 +94,7 @@ const FORMS = {
       ['zgoda_publikacja', 'Zgoda na publikację', 5]
     ],
     required: ['kategorie', 'opis'],
-    extra: ['Wybrana prośba']
+    extra: ['Wybrana prośba', 'ID']
   }
 };
 
@@ -166,8 +170,9 @@ function setup() {
       SpreadsheetApp.newDataValidation().requireCheckbox().build());
   });
 
-  // Prośby zapisane przed tą wersją dostają ID (potrzebne do listy na stronie).
+  // Wiersze zapisane przed tą wersją dostają ID (lista na stronie, linki między zakładkami).
   ensureIds_(sheet_(FORMS.szukam));
+  ensureIds_(sheet_(FORMS.chce));
   CacheService.getScriptCache().remove(LIST_KEY);
 }
 
@@ -176,7 +181,7 @@ function setup() {
 function onEdit(e) {
   CacheService.getScriptCache().remove(LIST_KEY);
   const sh = e && e.range ? e.range.getSheet() : null;
-  if (sh && sh.getName() === FORMS.szukam.sheet) ensureIds_(sh);
+  if (sh && (sh.getName() === FORMS.szukam.sheet || sh.getName() === FORMS.chce.sheet)) ensureIds_(sh);
 }
 
 // ---------- Lista próśb dla formularza "Chcę pomóc" ----------
@@ -297,7 +302,7 @@ function handlePost_(p) {
   values['Data'] = new Date();
   values['Status'] = 'Nowe';
   values['Opublikować'] = false;
-  if (p.form === 'szukam') values['ID'] = newId_();
+  values['ID'] = newId_();   // prośba i wolontariusz: do listy na stronie i do linków między zakładkami
 
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return json_({ ok: false, error: 'busy' });
@@ -321,7 +326,7 @@ function handlePost_(p) {
       const rodzaj = String(claim.r[claim.t.col['Rodzaj pomocy']] || '');
       const pub = String(claim.r[claim.t.col['Opis publiczny']] || '').trim();
       values['Rodzaj pomocy'] = safeText_(rodzaj);
-      values['Wybrana prośba'] = safeText_(claimId + ': ' + (pub || rodzaj));
+      values['Wybrana prośba'] = jump_(claim.sh, claim.t.col['ID'] + 1, claimId, claimId + ': ' + (pub || rodzaj));
     }
 
     const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
@@ -330,7 +335,7 @@ function handlePost_(p) {
     if (target > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), 1);
     sh.getRange(target, 1, 1, row.length).setValues([row]);
 
-    if (claim) markClaimed_(claim, values, tel, mail);
+    if (claim) markClaimed_(claim, values, tel, mail, sh, headers.indexOf('ID') + 1);
   } finally {
     lock.releaseLock();
   }
@@ -350,7 +355,8 @@ function findOpenRequest_(id) {
 
 // Prośba znika z listy: odznaczamy "Opublikować", zmieniamy status i dopisujemy
 // wolontariusza (poprzedni wpis zostaje, gdyby koordynator opublikował prośbę ponownie).
-function markClaimed_(c, values, tel, mail) {
+// Komórka "Wolontariusz" prowadzi do wiersza najnowszego wolontariusza w "Chcę pomóc".
+function markClaimed_(c, values, tel, mail, volSheet, volIdCol) {
   const col = c.t.col;
   function set(h, v) { if (col[h] !== undefined) c.sh.getRange(c.row, col[h] + 1).setValue(v); }
   const who = [values['Imię / pseudonim'] || '(bez imienia)', tel ? 'tel. ' + tel : '', mail]
@@ -359,7 +365,8 @@ function markClaimed_(c, values, tel, mail) {
   const prev = col['Wolontariusz'] !== undefined ? String(c.r[col['Wolontariusz']] || '') : '';
   set('Opublikować', false);
   set('Status', CLAIMED);
-  set('Wolontariusz', safeText_(prev ? prev + '\n' + line : line));
+  const label = prev ? prev + '\n' + line : line;
+  set('Wolontariusz', volIdCol ? jump_(volSheet, volIdCol, values['ID'], label) : safeText_(label));
   CacheService.getScriptCache().remove(LIST_KEY);
 }
 
@@ -401,6 +408,31 @@ function table_(sh) {
   head.forEach(function (h, i) { if (h !== '' && !(h in col)) col[h] = i; });
   const rows = last >= 2 && ncols ? sh.getRange(2, 1, last - 1, ncols).getValues() : [];
   return { head: head, col: col, rows: rows };
+}
+
+// Formuła-link do wiersza w zakładce sh, w którym kolumna idCol (od 1) zawiera id.
+// Wiersz jest szukany przez MATCH, więc link działa po sortowaniu i usuwaniu wierszy.
+// Gdy wiersza już nie ma, komórka pokazuje sam tekst.
+function jump_(sh, idCol, id, label) {
+  const L = colLetter_(idCol);
+  const ref = "'" + sh.getName().replace(/'/g, "''") + "'!" + L + ':' + L;
+  const text = lit_(label);
+  return '=IFERROR(HYPERLINK("#gid=' + sh.getSheetId() + '&range=A"&MATCH(' + lit_(id) + ',' + ref + ',0),' +
+    text + '),' + text + ')';
+}
+
+// Dowolny tekst jako literał w formule: cudzysłowy podwojone, znaki sterujące usunięte,
+// nowe wiersze jako CHAR(10). Treść wpisana w formularzu nie może więc zmienić formuły.
+function lit_(s) {
+  return String(s).replace(/\r/g, '').split('\n')
+    .map(p => '"' + p.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/"/g, '""') + '"')
+    .join('&CHAR(10)&');
+}
+
+function colLetter_(n) {
+  let s = '';
+  for (; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s;
+  return s;
 }
 
 function isEmpty_(v) { return v === '' || v === false || v === null; }
